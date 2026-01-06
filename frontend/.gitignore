@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Environment variables (SENSITIVE - NEVER COMMIT)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Build output
+dist/
+build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Vite
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# ESLint
+.eslintcache
+
+# Local config
+local.config.js
+local.config.ts
