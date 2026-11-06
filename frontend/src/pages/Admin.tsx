@@ -295,10 +295,10 @@ const Admin = () => {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider px-4 mb-3">Main Menu</p>
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Main Menu</p>
             {menuItems.map((item) => (
               <button key={item.id} onClick={() => { setTab(item.id as typeof tab); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 ${
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
                   tab === item.id ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/5' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }`}>
                 <span className="text-xl">{item.icon}</span>
@@ -308,6 +308,38 @@ const Admin = () => {
                 )}
               </button>
             ))}
+
+            <div className="pt-4 mt-2 border-t border-slate-700/50">
+              <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider px-4 mb-2">ERP Systems</p>
+              <Link to="/pos" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🏪</span>
+                <span className="font-medium text-sm">Point of Sale (POS)</span>
+              </Link>
+              <Link to="/kds" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🍳</span>
+                <span className="font-medium text-sm">Kitchen Display (KDS)</span>
+              </Link>
+              <Link to="/inventory" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">📦</span>
+                <span className="font-medium text-sm">Inventory &amp; Stock</span>
+              </Link>
+              <Link to="/recipes" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🍲</span>
+                <span className="font-medium text-sm">Recipe Food Costing</span>
+              </Link>
+              <Link to="/procurement" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🚛</span>
+                <span className="font-medium text-sm">Procurement &amp; POs</span>
+              </Link>
+              <Link to="/finance" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">📊</span>
+                <span className="font-medium text-sm">General Ledger &amp; P&amp;L</span>
+              </Link>
+              <Link to="/hr" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">👥</span>
+                <span className="font-medium text-sm">HR &amp; Staff Payroll</span>
+              </Link>
+            </div>
           </nav>
 
           {/* Bottom Section */}

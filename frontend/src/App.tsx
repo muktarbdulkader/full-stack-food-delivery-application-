@@ -15,6 +15,8 @@ import POS from './pages/POS';
 import Inventory from './pages/Inventory';
 import Recipes from './pages/Recipes';
 import Procurement from './pages/Procurement';
+import Finance from './pages/Finance';
+import HR from './pages/HR';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -41,7 +43,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     location.pathname.startsWith('/pos') ||
     location.pathname.startsWith('/inventory') ||
     location.pathname.startsWith('/recipes') ||
-    location.pathname.startsWith('/procurement');
+    location.pathname.startsWith('/procurement') ||
+    location.pathname.startsWith('/finance') ||
+    location.pathname.startsWith('/hr');
 
   if (isNoNavbarPage) {
     return <>{children}</>;
@@ -93,6 +97,8 @@ function App() {
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/recipes" element={<Recipes />} />
           <Route path="/procurement" element={<Procurement />} />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/hr" element={<HR />} />
 
           {/* Admin Management System */}
           <Route path="/admin" element={<Admin />} />

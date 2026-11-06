@@ -66,3 +66,4 @@ const employeeSchema = new Schema<IEmployee>(
 );
 
 export const Employee = mongoose.model<IEmployee>('Employee', employeeSchema);
+

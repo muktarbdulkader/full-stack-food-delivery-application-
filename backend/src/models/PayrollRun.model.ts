@@ -60,3 +60,4 @@ const payrollRunSchema = new Schema<IPayrollRun>(
 );
 
 export const PayrollRun = mongoose.model<IPayrollRun>('PayrollRun', payrollRunSchema);
+

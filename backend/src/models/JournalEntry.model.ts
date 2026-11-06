@@ -56,3 +56,4 @@ const journalEntrySchema = new Schema<IJournalEntry>(
 );
 
 export const JournalEntry = mongoose.model<IJournalEntry>('JournalEntry', journalEntrySchema);
+

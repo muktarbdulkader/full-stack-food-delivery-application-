@@ -38,3 +38,4 @@ const accountSchema = new Schema<IAccount>(
 );
 
 export const Account = mongoose.model<IAccount>('Account', accountSchema);
+

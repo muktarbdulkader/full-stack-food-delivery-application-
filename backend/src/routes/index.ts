@@ -13,6 +13,8 @@ import posRoutes from './pos.routes';
 import inventoryRoutes from './inventory.routes';
 import recipeRoutes from './recipe.routes';
 import procurementRoutes from './procurement.routes';
+import financeRoutes from './finance.routes';
+import hrRoutes from './hr.routes';
 
 const router = Router();
 
@@ -32,5 +34,7 @@ router.use('/pos', posRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/recipes', recipeRoutes);
 router.use('/procurement', procurementRoutes);
+router.use('/finance', financeRoutes);
+router.use('/hr', hrRoutes);
 
 export default router;
