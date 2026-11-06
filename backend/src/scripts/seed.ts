@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { User } from '../models/User.model';
+import { Admin } from '../models/Admin.model';
 import { Food } from '../models/Food.model';
 import { hashPassword } from '../utils/hash';
 import { env } from '../config/env';
@@ -10,9 +11,10 @@ const seedDatabase = async () => {
     console.log('Connected to MongoDB');
 
     // Create Admin User
-    const existingAdmin = await User.findOne({ email: 'admin@foodhub.com' });
-    if (!existingAdmin) {
-      const hashedPassword = await hashPassword('admin123');
+    const existingAdminUser = await User.findOne({ email: 'admin@foodhub.com' });
+    const hashedPassword = await hashPassword('admin123');
+
+    if (!existingAdminUser) {
       await User.create({
         name: 'Admin',
         email: 'admin@foodhub.com',
@@ -20,11 +22,27 @@ const seedDatabase = async () => {
         role: 'admin',
         phone: '0911000000',
       });
-      console.log('✅ Admin user created:');
+      console.log('✅ Admin user created in User collection:');
       console.log('   Email: admin@foodhub.com');
       console.log('   Password: admin123');
     } else {
-      console.log('Admin user already exists');
+      console.log('Admin user already exists in User collection');
+    }
+
+    // Also create in Admin collection for dedicated Admin Portal auth
+    const existingAdmin = await Admin.findOne({ email: 'admin@foodhub.com' });
+    if (!existingAdmin) {
+      await Admin.create({
+        name: 'Admin',
+        email: 'admin@foodhub.com',
+        password: hashedPassword,
+        role: 'admin',
+      });
+      console.log('✅ Admin created in Admin collection:');
+      console.log('   Email: admin@foodhub.com');
+      console.log('   Password: admin123');
+    } else {
+      console.log('Admin already exists in Admin collection');
     }
 
     // Create Sample Foods

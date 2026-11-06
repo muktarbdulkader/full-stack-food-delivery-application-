@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authService } from '../services/auth.service';
-import { setCredentials } from '../store/authSlice';
+import { setAdminCredentials } from '../store/authSlice';
 
 const AdminLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -31,7 +31,7 @@ const AdminLogin = () => {
 
     try {
       if (isLogin) {
-        const response = await authService.login({ 
+        const response = await authService.adminLogin({ 
           email: formData.email, 
           password: formData.password 
         });
@@ -42,7 +42,7 @@ const AdminLogin = () => {
           return;
         }
         
-        dispatch(setCredentials({
+        dispatch(setAdminCredentials({
           user: response.data.user,
           token: response.data.token,
         }));
@@ -57,7 +57,7 @@ const AdminLogin = () => {
           adminCode: formData.adminCode,
         });
         
-        dispatch(setCredentials({
+        dispatch(setAdminCredentials({
           user: response.data.user,
           token: response.data.token,
         }));
