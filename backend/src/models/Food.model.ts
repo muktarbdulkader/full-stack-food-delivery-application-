@@ -20,6 +20,8 @@ export interface IFood extends Document {
   price: number;
   category: string;
   image: string;
+  model3dGlb?: string; // 3D model for AR view (.glb)
+  model3dUsdz?: string; // 3D model for Apple QuickLook AR (.usdz)
   portions?: IFoodPortion[];
   extras?: IFoodExtra[];
   spiceLevel?: 'Mild' | 'Medium' | 'Spicy' | 'Very Hot';
@@ -85,6 +87,13 @@ const foodSchema = new Schema<IFood>(
     image: {
       type: String,
       default: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=700',
+    },
+    model3dGlb: {
+      type: String,
+      default: 'https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/Burger/glTF-Binary/Burger.glb',
+    },
+    model3dUsdz: {
+      type: String,
     },
     portions: {
       type: [foodPortionSchema],

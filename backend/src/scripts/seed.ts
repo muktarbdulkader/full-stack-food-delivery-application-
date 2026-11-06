@@ -5,6 +5,11 @@ import { Food } from '../models/Food.model';
 import { Organization } from '../models/Organization.model';
 import { Branch } from '../models/Branch.model';
 import { RestaurantTable } from '../models/RestaurantTable.model';
+import { Ingredient } from '../models/Ingredient.model';
+import { Supplier } from '../models/Supplier.model';
+import { Recipe } from '../models/Recipe.model';
+import { Account } from '../models/Account.model';
+import { Employee } from '../models/Employee.model';
 import { generateSecureQRToken, generateTableQRCodeDataUrl } from '../services/qr.service';
 import { hashPassword } from '../utils/hash';
 import { env } from '../config/env';
@@ -277,6 +282,172 @@ const seedDatabase = async () => {
 
       await Food.insertMany(sampleFoods);
       console.log(`✅ ${sampleFoods.length} customized food items created`);
+    }
+
+    // 6. Seed Suppliers
+    let meatSupplier = await Supplier.findOne({ name: 'Addis Fresh Meats PLC' });
+    if (!meatSupplier) {
+      meatSupplier = await Supplier.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        name: 'Addis Fresh Meats PLC',
+        contactPerson: 'Ato Berhanu',
+        phone: '+251 911 554 433',
+        email: 'sales@addismeats.et',
+        category: 'Meat Supplier',
+        paymentTerms: 'Net 15',
+        rating: 5,
+      });
+      console.log('✅ Supplier created: Addis Fresh Meats PLC');
+    }
+
+    let vegSupplier = await Supplier.findOne({ name: 'Highland Organic Veggies' });
+    if (!vegSupplier) {
+      vegSupplier = await Supplier.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        name: 'Highland Organic Veggies',
+        contactPerson: 'W/ro Selamawit',
+        phone: '+251 922 887 766',
+        email: 'orders@highlandveg.et',
+        category: 'Vegetable Supplier',
+        paymentTerms: 'Cash on Delivery',
+        rating: 5,
+      });
+      console.log('✅ Supplier created: Highland Organic Veggies');
+    }
+
+    // 7. Seed Ingredients
+    let beef = await Ingredient.findOne({ name: 'Beef Tenderloin' });
+    if (!beef) {
+      beef = await Ingredient.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        name: 'Beef Tenderloin',
+        category: 'Protein',
+        unit: 'kg',
+        currentStock: 45,
+        minimumStock: 10,
+        unitCost: 650,
+        supplierId: meatSupplier._id,
+        storageLocation: 'Fridge',
+      });
+      console.log('✅ Ingredient created: Beef Tenderloin');
+    }
+
+    let teffFlour = await Ingredient.findOne({ name: 'White Teff Flour' });
+    if (!teffFlour) {
+      teffFlour = await Ingredient.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        name: 'White Teff Flour',
+        category: 'Grain',
+        unit: 'kg',
+        currentStock: 120,
+        minimumStock: 25,
+        unitCost: 110,
+        supplierId: vegSupplier._id,
+        storageLocation: 'Dry Store',
+      });
+      console.log('✅ Ingredient created: White Teff Flour');
+    }
+
+    let shiroPowder = await Ingredient.findOne({ name: 'Sun-Dried Shiro Powder' });
+    if (!shiroPowder) {
+      shiroPowder = await Ingredient.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        name: 'Sun-Dried Shiro Powder',
+        category: 'Spices',
+        unit: 'kg',
+        currentStock: 30,
+        minimumStock: 8,
+        unitCost: 220,
+        supplierId: vegSupplier._id,
+        storageLocation: 'Dry Store',
+      });
+      console.log('✅ Ingredient created: Sun-Dried Shiro Powder');
+    }
+
+    // 8. Seed Recipe
+    const tibsFood = await Food.findOne({ name: 'Special Tibs with Injera' });
+    if (tibsFood && beef && teffFlour) {
+      let tibsRecipe = await Recipe.findOne({ food: tibsFood._id });
+      if (!tibsRecipe) {
+        await Recipe.create({
+          organizationId: organization._id,
+          branchId: haramayaBranch._id,
+          food: tibsFood._id,
+          name: 'Special Tibs with Injera',
+          servingSize: 1,
+          preparationTime: 15,
+          sellingPrice: tibsFood.price,
+          foodCost: 215,
+          grossProfit: tibsFood.price - 215,
+          profitMargin: parseFloat((((tibsFood.price - 215) / tibsFood.price) * 100).toFixed(2)),
+          ingredients: [
+            { ingredient: beef._id, quantity: 0.3, unit: 'kg', wastagePercent: 5 },
+            { ingredient: teffFlour._id, quantity: 0.15, unit: 'kg', wastagePercent: 0 },
+          ],
+        });
+        console.log('✅ Recipe engineered: Special Tibs with Injera');
+      }
+    }
+
+    // 9. Seed Chart of Accounts
+    const defaultAccounts = [
+      { code: '1010', name: 'Cash on Hand', category: 'asset' as const, balance: 45000 },
+      { code: '1020', name: 'Bank Account (Telebirr/CBE)', category: 'asset' as const, balance: 185000 },
+      { code: '1030', name: 'Raw Material Inventory Asset', category: 'asset' as const, balance: 62000 },
+      { code: '2010', name: 'Accounts Payable (Vendors)', category: 'liability' as const, balance: 14500 },
+      { code: '4010', name: 'Food & Beverage Dine-In Revenue', category: 'revenue' as const, balance: 82000 },
+      { code: '5010', name: 'Cost of Goods Sold (Ingredients)', category: 'expense' as const, balance: 29000 },
+      { code: '5020', name: 'Staff Salaries & Wages', category: 'expense' as const, balance: 35000 },
+    ];
+    for (const acc of defaultAccounts) {
+      const exists = await Account.findOne({ code: acc.code });
+      if (!exists) {
+        await Account.create({
+          ...acc,
+          organizationId: organization._id,
+          branchId: haramayaBranch._id,
+          isSystemAccount: true,
+        });
+      }
+    }
+    console.log('✅ Chart of Accounts initialized');
+
+    // 10. Seed Staff / Employees
+    let waiterEmp = await Employee.findOne({ employeeCode: 'EMP-001' });
+    if (!waiterEmp) {
+      waiterEmp = await Employee.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        employeeCode: 'EMP-001',
+        name: 'Dawit Mengistu',
+        phone: '+251 912 345 678',
+        role: 'waiter',
+        employmentType: 'full_time',
+        salaryType: 'monthly',
+        baseSalary: 6500,
+      });
+      console.log('✅ Employee created: Dawit Mengistu (Waiter)');
+    }
+
+    let chefEmp = await Employee.findOne({ employeeCode: 'EMP-002' });
+    if (!chefEmp) {
+      chefEmp = await Employee.create({
+        organizationId: organization._id,
+        branchId: haramayaBranch._id,
+        employeeCode: 'EMP-002',
+        name: 'Chef Solomon Tadesse',
+        phone: '+251 923 456 789',
+        role: 'chef',
+        employmentType: 'full_time',
+        salaryType: 'monthly',
+        baseSalary: 16000,
+      });
+      console.log('✅ Employee created: Chef Solomon Tadesse (Head Chef)');
     }
 
     console.log('\n🎉 FoodHub ERP Database Seeded Successfully!');

@@ -18,6 +18,8 @@ export interface DiningFood {
   price: number;
   category: string;
   image: string;
+  model3dGlb?: string;
+  model3dUsdz?: string;
   isAvailable: boolean;
   portions?: FoodPortion[];
   extras?: FoodExtra[];

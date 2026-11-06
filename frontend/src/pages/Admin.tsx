@@ -310,14 +310,28 @@ const Admin = () => {
             ))}
 
             <div className="pt-4 mt-2 border-t border-slate-700/50">
-              <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider px-4 mb-2">ERP Systems</p>
-              <Link to="/pos" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🏪</span>
-                <span className="font-medium text-sm">Point of Sale (POS)</span>
+              <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Dedicated Staff Hubs</p>
+              <Link to="/cashier" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">💵</span>
+                <span className="font-medium text-sm">Cashier Desk</span>
+              </Link>
+              <Link to="/waiter" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🛎️</span>
+                <span className="font-medium text-sm">Waiter Station</span>
               </Link>
               <Link to="/kds" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
                 <span className="text-lg">🍳</span>
                 <span className="font-medium text-sm">Kitchen Display (KDS)</span>
+              </Link>
+              <Link to="/delivery" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🛵</span>
+                <span className="font-medium text-sm">Driver &amp; Dispatch</span>
+              </Link>
+
+              <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider px-4 mt-4 mb-2">ERP Systems</p>
+              <Link to="/pos" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
+                <span className="text-lg">🏪</span>
+                <span className="font-medium text-sm">Point of Sale (POS)</span>
               </Link>
               <Link to="/inventory" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
                 <span className="text-lg">📦</span>

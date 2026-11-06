@@ -17,6 +17,9 @@ import Recipes from './pages/Recipes';
 import Procurement from './pages/Procurement';
 import Finance from './pages/Finance';
 import HR from './pages/HR';
+import WaiterStation from './pages/WaiterStation';
+import CashierStation from './pages/CashierStation';
+import DeliveryStation from './pages/DeliveryStation';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -45,7 +48,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     location.pathname.startsWith('/recipes') ||
     location.pathname.startsWith('/procurement') ||
     location.pathname.startsWith('/finance') ||
-    location.pathname.startsWith('/hr');
+    location.pathname.startsWith('/hr') ||
+    location.pathname.startsWith('/waiter') ||
+    location.pathname.startsWith('/cashier') ||
+    location.pathname.startsWith('/delivery');
 
   if (isNoNavbarPage) {
     return <>{children}</>;
@@ -99,6 +105,14 @@ function App() {
           <Route path="/procurement" element={<Procurement />} />
           <Route path="/finance" element={<Finance />} />
           <Route path="/hr" element={<HR />} />
+
+          {/* Dedicated Staff Workstations */}
+          <Route path="/waiter" element={<WaiterStation />} />
+          <Route path="/waiter-station" element={<WaiterStation />} />
+          <Route path="/cashier" element={<CashierStation />} />
+          <Route path="/cashier-station" element={<CashierStation />} />
+          <Route path="/delivery" element={<DeliveryStation />} />
+          <Route path="/delivery-station" element={<DeliveryStation />} />
 
           {/* Admin Management System */}
           <Route path="/admin" element={<Admin />} />

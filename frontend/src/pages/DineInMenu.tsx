@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { qrDiningService } from '../services/qr.service';
 import type { DiningFood, QRScanResponse } from '../services/qr.service';
+import { ARFoodModal } from '../components/ARFoodModal';
 
 interface CartItem {
   food: DiningFood;
@@ -53,6 +54,9 @@ const DineInMenu = () => {
   // Active Placed Order status
   const [lastPlacedOrder, setLastPlacedOrder] = useState<any>(null);
   const [placingOrder, setPlacingOrder] = useState(false);
+
+  // Augmented Reality (AR) Food Viewer Modal
+  const [arFood, setArFood] = useState<DiningFood | null>(null);
 
   // Load Scan Data
   useEffect(() => {
@@ -400,9 +404,22 @@ const DineInMenu = () => {
                     {food.price.toFixed(0)} <span className="text-xs text-orange-600 font-bold">ETB</span>
                   </span>
 
-                  <span className="px-3 py-1.5 rounded-xl bg-orange-50 text-orange-600 text-xs font-bold hover:bg-orange-100 transition-colors">
-                    Customize +
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setArFood(food);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-orange-500/30 text-orange-700 text-xs font-black hover:bg-orange-500/30 flex items-center gap-1 transition-all"
+                      title="View on my table in Augmented Reality"
+                    >
+                      <span>👓</span> AR 3D
+                    </button>
+                    <span className="px-3 py-1.5 rounded-xl bg-orange-50 text-orange-600 text-xs font-bold hover:bg-orange-100 transition-colors">
+                      Customize +
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -464,11 +481,23 @@ const DineInMenu = () => {
               </button>
             </div>
 
-            <img
-              src={selectedFood.image}
-              alt=""
-              className="w-full h-44 rounded-2xl object-cover mb-4"
-            />
+            <div className="relative mb-4">
+              <img
+                src={selectedFood.image}
+                alt=""
+                className="w-full h-44 rounded-2xl object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setArFood(selectedFood);
+                  setSelectedFood(null);
+                }}
+                className="absolute bottom-3 right-3 bg-slate-900/90 hover:bg-slate-900 text-white font-black px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xl border border-slate-700/80 backdrop-blur-md active:scale-95 transition-all"
+              >
+                <span>👓</span> View 3D on Table (AR)
+              </button>
+            </div>
             <p className="text-xs text-slate-500 leading-relaxed mb-5">{selectedFood.description}</p>
 
             {/* Portions / Sizing */}
@@ -817,6 +846,25 @@ const DineInMenu = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* AR 3D FOOD AUGMENTED REALITY VIEWER MODAL */}
+      {/* ========================================================= */}
+      {arFood && (
+        <ARFoodModal
+          foodName={arFood.name}
+          foodPrice={arFood.price}
+          foodImage={arFood.image}
+          tableNumber={scanData?.table.number}
+          modelGlb={arFood.model3dGlb}
+          modelUsdz={arFood.model3dUsdz}
+          onClose={() => setArFood(null)}
+          onAddToCart={() => {
+            setSelectedFood(arFood);
+            setArFood(null);
+          }}
+        />
       )}
 
     </div>
