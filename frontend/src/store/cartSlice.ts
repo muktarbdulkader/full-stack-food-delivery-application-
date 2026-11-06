@@ -64,11 +64,17 @@ const cartSlice = createSlice({
       state,
       action: PayloadAction<{ foodId: string; quantity: number }>
     ) => {
-      const item = state.items.find(
-        (item) => item.food._id === action.payload.foodId
-      );
-      if (item) {
-        item.quantity = Math.max(1, action.payload.quantity);
+      if (action.payload.quantity <= 0) {
+        state.items = state.items.filter(
+          (item) => item.food._id !== action.payload.foodId
+        );
+      } else {
+        const item = state.items.find(
+          (item) => item.food._id === action.payload.foodId
+        );
+        if (item) {
+          item.quantity = action.payload.quantity;
+        }
       }
       state.totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
       state.totalAmount = state.items.reduce(

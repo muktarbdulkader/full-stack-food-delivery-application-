@@ -36,7 +36,7 @@ export const sendOrderConfirmation = async (email: string, orderId: string, tota
         <p>Thank you for your order!</p>
         <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p><strong>Order ID:</strong> #${orderId.slice(-8).toUpperCase()}</p>
-          <p><strong>Total:</strong> $${total.toFixed(2)}</p>
+          <p><strong>Total:</strong> ${total.toFixed(0)} ETB</p>
         </div>
         <p>We're preparing your delicious food and will notify you when it's on the way!</p>
       </div>

@@ -24,21 +24,17 @@ const HomePage = () => {
 // Layout wrapper that conditionally shows navbar
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   
-  // Pages without navbar
+  // Pages without customer navbar
   const noNavbarPages = ['/admin', '/admin-login', '/login'];
   const isNoNavbarPage = noNavbarPages.includes(location.pathname);
-  
-  // Landing page (home for non-authenticated) also doesn't need navbar
-  const isLandingPage = location.pathname === '/' && !isAuthenticated;
 
-  if (isNoNavbarPage || isLandingPage) {
+  if (isNoNavbarPage) {
     return <>{children}</>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
+    <div className="min-h-screen bg-[#FFFDF9]">
       <Navbar />
       <main>{children}</main>
     </div>

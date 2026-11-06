@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import type { RootState } from '../store/store';
 import { removeFromCart, updateQuantity, clearCart } from '../store/cartSlice';
 import { orderService } from '../services/food.service';
@@ -11,27 +11,36 @@ const Cart = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
 
-  const [location, setLocation] = useState({ address: '', city: 'Addis Ababa', zipCode: '', country: 'Ethiopia', lat: 0, lng: 0 });
+  const [location, setLocation] = useState({
+    address: '',
+    city: 'Addis Ababa',
+    zipCode: '',
+    country: 'Ethiopia',
+    lat: 0,
+    lng: 0,
+  });
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'telebirr' | 'cbebirr'>('telebirr');
+  const [paymentMethod, setPaymentMethod] = useState<'telebirr' | 'mpesa' | 'cbebirr' | 'cash'>('telebirr');
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [locationSuccess, setLocationSuccess] = useState(false);
   const [locationError, setLocationError] = useState('');
 
   const deliveryFee = 50;
   const tax = totalAmount * 0.15;
   const grandTotal = totalAmount + deliveryFee + tax;
 
-  // Get user's current GPS location
+  // Browser Geolocation
   const getCurrentLocation = () => {
     setGettingLocation(true);
     setLocationError('');
-    
+    setLocationSuccess(false);
+
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser');
       setGettingLocation(false);
@@ -40,30 +49,41 @@ const Cart = () => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation(prev => ({
+        setLocation((prev) => ({
           ...prev,
           lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lng: position.coords.longitude,
         }));
         setGettingLocation(false);
+        setLocationSuccess(true);
       },
-      (error) => {
-        setLocationError('Unable to get your location. Please enable location services.');
+      (err) => {
+        setLocationError('Unable to retrieve location. Please type your street address.');
         setGettingLocation(false);
-        console.error(error);
+        console.error(err);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
   const handleCheckout = async () => {
-    if (!location.address || !location.city || !phone) {
-      setError('Please fill all required fields');
+    if (!location.address.trim()) {
+      setError('Please provide your street address or sub-city area.');
+      setStep(2);
       return;
     }
 
-    if (!phone.match(/^(0[79]\d{8}|2519\d{8}|\+2519\d{8})$/)) {
-      setError('Please enter a valid Ethiopian phone number');
+    if (!phone.trim()) {
+      setError('Please enter your Ethiopian contact phone number.');
+      setStep(2);
+      return;
+    }
+
+    // Ethiopian Phone validation: 09..., 07..., 2519..., +2519...
+    const cleanPhone = phone.replace(/[\s-]/g, '');
+    if (!cleanPhone.match(/^(0[79]\d{8}|251[79]\d{8}|\+251[79]\d{8})$/)) {
+      setError('Please enter a valid Ethiopian phone number (e.g. 0911234567 or 0712345678).');
+      setStep(2);
       return;
     }
 
@@ -75,7 +95,7 @@ const Cart = () => {
         items: items.map((item) => ({ foodId: item.food._id, quantity: item.quantity })),
         location,
         payment: { method: paymentMethod },
-        phone,
+        phone: cleanPhone,
         notes,
       });
 
@@ -83,11 +103,11 @@ const Cart = () => {
 
       if (paymentMethod !== 'cash') {
         setPaymentStatus('processing');
-        
+
         const paymentRes = await api.post('/payments/initiate', {
           orderId,
           method: paymentMethod,
-          phone,
+          phone: cleanPhone,
         });
 
         if (paymentRes.data.data.success) {
@@ -98,15 +118,15 @@ const Cart = () => {
           }
         } else {
           setPaymentStatus('failed');
-          setError(paymentRes.data.data.message);
+          setError(paymentRes.data.data.message || 'Payment initiation failed.');
         }
       } else {
         dispatch(clearCart());
         navigate('/orders');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to place order');
+      const errorObj = err as { response?: { data?: { message?: string } } };
+      setError(errorObj.response?.data?.message || 'Failed to place order. Please try again.');
       setPaymentStatus('failed');
     } finally {
       setLoading(false);
@@ -115,7 +135,7 @@ const Cart = () => {
 
   const pollPaymentStatus = async (orderId: string) => {
     let attempts = 0;
-    const maxAttempts = 40;
+    const maxAttempts = 30;
 
     const checkStatus = async () => {
       try {
@@ -128,7 +148,7 @@ const Cart = () => {
         }
         if (res.data.data.paymentStatus === 'failed') {
           setPaymentStatus('failed');
-          setError('Payment failed. Please try again.');
+          setError('Payment declined or failed. Please try again.');
           return;
         }
       } catch (e) {
@@ -140,7 +160,7 @@ const Cart = () => {
         setTimeout(checkStatus, 3000);
       } else {
         setPaymentStatus('failed');
-        setError('Payment timeout. Check your phone and try again.');
+        setError('Payment verification timed out. If money was deducted, our team will confirm your order.');
       }
     };
 
@@ -149,262 +169,528 @@ const Cart = () => {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="text-6xl mb-4">🛒</div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Your Cart is Empty</h2>
-        <button onClick={() => navigate('/')} className="bg-orange-500 text-white px-6 py-3 rounded-lg">
-          Browse Menu
-        </button>
-      </div>
-    );
-  }
-
-  if (paymentStatus === 'processing') {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-bold mb-2">Processing Payment</h2>
-          <p className="text-gray-600 mb-4">
-            {paymentMethod === 'mpesa' && '📱 Check your phone for M-Pesa prompt'}
-            {paymentMethod === 'telebirr' && '📱 Complete payment on Telebirr'}
-            {paymentMethod === 'cbebirr' && '📱 Complete payment on CBE Birr'}
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-16">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-12 text-center border border-orange-100 shadow-xl shadow-orange-500/5">
+          <div className="w-24 h-24 rounded-full bg-orange-100 flex items-center justify-center text-5xl mx-auto mb-6">
+            🛒
+          </div>
+          <h2 className="font-display font-black text-2xl sm:text-3xl text-slate-800 mb-2">
+            Your Cart is Empty
+          </h2>
+          <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+            Looks like you haven't added any delicious Ethiopian dishes or meals to your cart yet.
           </p>
-          <p className="text-sm text-gray-500">Do not close this page...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (paymentStatus === 'success') {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-md text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-xl font-bold mb-2 text-green-600">Payment Successful!</h2>
-          <p className="text-gray-600">Redirecting to your orders...</p>
+          <Link
+            to="/menu"
+            className="inline-flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-orange-500 via-red-500 to-rose-500 text-white rounded-2xl font-display font-bold shadow-lg shadow-orange-500/25 hover:shadow-orange-500/35 hover:scale-105 transition-all"
+          >
+            <span>Browse Full Menu</span>
+            <span>→</span>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Checkout</h1>
-
-      <div className="flex items-center justify-center mb-8">
-        {['Cart', 'Delivery', 'Payment'].map((s, i) => (
-          <div key={s} className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-              step > i ? 'bg-green-500 text-white' : step === i + 1 ? 'bg-orange-500 text-white' : 'bg-gray-200'
-            }`}>
-              {step > i ? '✓' : i + 1}
-            </div>
-            <span className="ml-2 mr-4">{s}</span>
-            {i < 2 && <div className="w-16 h-1 bg-gray-200 mr-4" />}
+    <div className="min-h-screen bg-[#FFFDF9] py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+      
+      {/* Payment Processing Overlay */}
+      {paymentStatus === 'processing' && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-orange-100 animate-scale-in">
+            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-5" />
+            <h3 className="font-display font-bold text-xl text-slate-900 mb-2">
+              Waiting for Confirmation
+            </h3>
+            <p className="text-sm text-slate-600 mb-4">
+              {paymentMethod === 'telebirr' && '📱 Enter your Telebirr PIN on your phone'}
+              {paymentMethod === 'mpesa' && '📱 Enter your M-Pesa PIN on your Safaricom phone'}
+              {paymentMethod === 'cbebirr' && '📱 Confirm payment on your CBE Birr app'}
+            </p>
+            <p className="text-xs text-slate-400 font-semibold">Please keep this window open...</p>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {error && <div className="bg-red-100 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          {step === 1 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Your Items</h2>
-              {items.map((item) => (
-                <div key={item.food._id} className="flex items-center justify-between py-4 border-b">
-                  <div className="flex items-center gap-4">
-                    <img src={item.food.image} alt="" className="w-16 h-16 rounded object-cover" />
-                    <div>
-                      <h3 className="font-semibold">{item.food.name}</h3>
-                      <p className="text-orange-500">{item.food.price.toFixed(2)} ETB</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center border rounded">
-                      <button onClick={() => dispatch(updateQuantity({ foodId: item.food._id, quantity: item.quantity - 1 }))} className="px-3 py-1">-</button>
-                      <span className="px-3">{item.quantity}</span>
-                      <button onClick={() => dispatch(updateQuantity({ foodId: item.food._id, quantity: item.quantity + 1 }))} className="px-3 py-1">+</button>
-                    </div>
-                    <span className="font-semibold w-24 text-right">{(item.food.price * item.quantity).toFixed(2)} ETB</span>
-                    <button onClick={() => dispatch(removeFromCart(item.food._id))} className="text-red-500">✕</button>
-                  </div>
-                </div>
-              ))}
-              <button onClick={() => setStep(2)} className="w-full mt-4 bg-orange-500 text-white py-3 rounded-lg font-semibold">
-                Continue to Delivery
-              </button>
+      {/* Payment Success Overlay */}
+      {paymentStatus === 'success' && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-emerald-100 animate-scale-in">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 text-emerald-600 animate-bounce">
+              ✓
             </div>
-          )}
+            <h3 className="font-display font-bold text-2xl text-emerald-600 mb-2">
+              Payment Confirmed!
+            </h3>
+            <p className="text-sm text-slate-600">Your order has been sent to the kitchen. Redirecting to tracking...</p>
+          </div>
+        </div>
+      )}
 
-          {step === 2 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">📍 Delivery Information</h2>
-              <div className="space-y-4">
-                {/* GPS Location Button */}
-                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">📍</span>
-                      <div>
-                        <p className="font-semibold text-gray-800">Share Your Location</p>
-                        <p className="text-sm text-gray-500">Help delivery person find you faster</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={getCurrentLocation}
-                      disabled={gettingLocation}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {gettingLocation ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Getting...
-                        </>
-                      ) : (
-                        <>📌 Get My Location</>
-                      )}
-                    </button>
-                  </div>
-                  {location.lat !== 0 && location.lng !== 0 && (
-                    <div className="mt-2 p-2 bg-green-100 rounded-lg text-green-700 text-sm flex items-center gap-2">
-                      <span>✅</span> Location captured: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                    </div>
-                  )}
-                  {locationError && (
-                    <div className="mt-2 p-2 bg-red-100 rounded-lg text-red-700 text-sm">
-                      ⚠️ {locationError}
-                    </div>
-                  )}
-                </div>
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Title & Stepper Header */}
+        <div className="mb-8 text-center sm:text-left">
+          <h1 className="font-display font-black text-3xl sm:text-4xl text-slate-900 mb-2">
+            Checkout & Order Review
+          </h1>
+          <p className="text-slate-500 text-sm">Review your selected items and choose delivery & payment details</p>
+        </div>
 
-                <input
-                  placeholder="Street Address / Area *"
-                  value={location.address}
-                  onChange={(e) => setLocation({ ...location, address: e.target.value })}
-                  className="w-full border rounded-lg px-4 py-3"
-                />
-                <select
-                  value={location.city}
-                  onChange={(e) => setLocation({ ...location, city: e.target.value })}
-                  className="w-full border rounded-lg px-4 py-3"
-                >
-                  <option value="Addis Ababa">Addis Ababa</option>
-                  <option value="Dire Dawa">Dire Dawa</option>
-                  <option value="Hawassa">Hawassa</option>
-                  <option value="Bahir Dar">Bahir Dar</option>
-                  <option value="Adama">Adama</option>
-                  <option value="Mekelle">Mekelle</option>
-                  <option value="Gondar">Gondar</option>
-                  <option value="Jimma">Jimma</option>
-                </select>
-                <input
-                  placeholder="Phone Number * (e.g., 0911234567)"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full border rounded-lg px-4 py-3"
-                />
-                <textarea
-                  placeholder="Delivery Notes (landmark, building, floor, etc.)"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full border rounded-lg px-4 py-3"
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-4 mt-6">
-                <button onClick={() => setStep(1)} className="flex-1 border py-3 rounded-lg">Back</button>
-                <button onClick={() => setStep(3)} className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold">
-                  Continue to Payment
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">💳 Payment Method</h2>
-              <div className="space-y-3">
-                {[
-                  { id: 'telebirr', icon: '🟢', label: 'Telebirr', desc: 'Ethio Telecom mobile money', color: 'bg-green-500' },
-                  { id: 'mpesa', icon: '🟣', label: 'M-Pesa', desc: 'Safaricom Ethiopia', color: 'bg-purple-500' },
-                  { id: 'cbebirr', icon: '🔵', label: 'CBE Birr', desc: 'Commercial Bank of Ethiopia', color: 'bg-blue-600' },
-                  { id: 'cash', icon: '💵', label: 'Cash on Delivery', desc: 'Pay when you receive', color: 'bg-gray-500' },
-                ].map((method) => (
-                  <label
-                    key={method.id}
-                    className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === method.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+        {/* 3-Step Indicator Bar */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/60 shadow-sm mb-8">
+          <div className="flex items-center justify-between max-w-2xl mx-auto">
+            {[
+              { stepNum: 1, label: 'Cart Items', icon: '🛒' },
+              { stepNum: 2, label: 'Delivery Address', icon: '📍' },
+              { stepNum: 3, label: 'Ethiopian Payment', icon: '💳' },
+            ].map((s, idx) => {
+              const isPassed = step > s.stepNum;
+              const isCurrent = step === s.stepNum;
+              return (
+                <div key={s.stepNum} className="flex items-center flex-1 last:flex-none">
+                  <div
+                    onClick={() => {
+                      if (step > s.stepNum) setStep(s.stepNum as 1 | 2 | 3);
+                    }}
+                    className={`flex items-center gap-2 cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'text-orange-600 font-bold'
+                        : isPassed
+                        ? 'text-emerald-600 font-bold'
+                        : 'text-slate-400 font-medium'
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="payment"
-                      value={method.id}
-                      checked={paymentMethod === method.id}
-                      onChange={() => setPaymentMethod(method.id as typeof paymentMethod)}
-                      className="hidden"
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black transition-all ${
+                        isCurrent
+                          ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25 scale-105'
+                          : isPassed
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {isPassed ? '✓' : s.stepNum}
+                    </div>
+                    <span className="hidden sm:inline text-xs sm:text-sm">{s.label}</span>
+                  </div>
+
+                  {idx < 2 && (
+                    <div
+                      className={`flex-1 h-0.5 mx-3 sm:mx-4 rounded transition-colors ${
+                        step > idx + 1 ? 'bg-emerald-500' : 'bg-slate-200'
+                      }`}
                     />
-                    <div className={`w-12 h-12 ${method.color} rounded-xl flex items-center justify-center text-white text-2xl mr-4`}>
-                      {method.icon}
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Global Error Alert */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-5 py-3.5 rounded-2xl text-sm font-medium mb-6 flex items-center gap-2 animate-fade-in-up">
+            <span className="text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Left Column (Steps 1, 2, or 3) */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* STEP 1: CART REVIEW */}
+            {step === 1 && (
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/60 shadow-sm animate-fade-in-up">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                  <h2 className="font-display font-bold text-xl text-slate-900">Your Selected Dishes</h2>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {items.length} {items.length === 1 ? 'Dish' : 'Dishes'}
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {items.map((item) => (
+                    <div key={item.food._id} className="py-4.5 flex items-center gap-4">
+                      <img
+                        src={item.food.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}
+                        alt={item.food.name}
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover bg-orange-50 border border-slate-100 flex-shrink-0"
+                      />
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display font-bold text-slate-900 text-sm sm:text-base truncate">
+                          {item.food.name}
+                        </h3>
+                        <p className="text-xs text-orange-600 font-bold mb-2">
+                          {item.food.price.toFixed(0)} ETB
+                        </p>
+
+                        {/* Quantity Stepper */}
+                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1">
+                          <button
+                            onClick={() =>
+                              dispatch(updateQuantity({ foodId: item.food._id, quantity: item.quantity - 1 }))
+                            }
+                            className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm shadow-xs transition-colors"
+                          >
+                            –
+                          </button>
+                          <span className="px-3 text-xs font-bold text-slate-800">{item.quantity}</span>
+                          <button
+                            onClick={() =>
+                              dispatch(updateQuantity({ foodId: item.food._id, quantity: item.quantity + 1 }))
+                            }
+                            className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm shadow-xs transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Subtotal & Delete */}
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <p className="font-display font-black text-slate-900 text-base">
+                          {(item.food.price * item.quantity).toFixed(0)} <span className="text-xs text-slate-400 font-normal">ETB</span>
+                        </p>
+                        <button
+                          onClick={() => dispatch(removeFromCart(item.food._id))}
+                          className="text-xs text-slate-400 hover:text-red-500 transition-colors p-1"
+                          title="Remove item"
+                        >
+                          ✕ Remove
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold">{method.label}</p>
-                      <p className="text-sm text-gray-500">{method.desc}</p>
+                  ))}
+                </div>
+
+                <div className="pt-6 mt-4 border-t border-slate-100 flex justify-between items-center">
+                  <Link to="/menu" className="text-xs font-bold text-orange-600 hover:underline">
+                    ← Add more dishes
+                  </Link>
+                  <button
+                    onClick={() => setStep(2)}
+                    className="px-8 py-3.5 bg-gradient-to-r from-orange-500 via-red-500 to-rose-500 text-white rounded-2xl font-display font-bold text-sm shadow-md shadow-orange-500/25 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    <span>Proceed to Delivery</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: DELIVERY & GPS */}
+            {step === 2 && (
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/60 shadow-sm animate-fade-in-up">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                  <h2 className="font-display font-bold text-xl text-slate-900">📍 Delivery Information</h2>
+                  <span className="text-xs font-bold text-slate-400">Step 2 of 3</span>
+                </div>
+
+                <div className="space-y-5">
+                  {/* GPS Locator Banner */}
+                  <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 p-4.5 rounded-2xl border border-orange-200/70">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">🧭</span>
+                        <div>
+                          <p className="font-display font-bold text-slate-900 text-sm">Pin Exact Location</p>
+                          <p className="text-xs text-slate-500">Share GPS coordinates so our driver navigates directly to you</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={getCurrentLocation}
+                        disabled={gettingLocation}
+                        className="px-4 py-2.5 bg-slate-900 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {gettingLocation ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Locating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>📍 Use My GPS</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                    {paymentMethod === method.id && <span className="text-orange-500 text-xl">✓</span>}
-                  </label>
+
+                    {locationSuccess && (
+                      <div className="mt-3 p-2.5 bg-emerald-100/80 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
+                        <span>✓</span> Coordinates captured: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                      </div>
+                    )}
+                    {locationError && (
+                      <div className="mt-3 p-2.5 bg-red-100/80 rounded-xl text-red-700 text-xs font-medium">
+                        ⚠️ {locationError}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Street Address */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Specific Address / Sub-City Area *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bole Medhanialem, Behind Edna Mall, Apt 4B"
+                      value={location.address}
+                      onChange={(e) => setLocation({ ...location, address: e.target.value })}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
+                    />
+                  </div>
+
+                  {/* City Selector */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        City *
+                      </label>
+                      <select
+                        value={location.city}
+                        onChange={(e) => setLocation({ ...location, city: e.target.value })}
+                        className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-orange-500 focus:bg-white transition-all font-medium"
+                      >
+                        <option value="Addis Ababa">Addis Ababa (አዲስ አበባ)</option>
+                        <option value="Hawassa">Hawassa (ሀዋሳ)</option>
+                        <option value="Adama">Adama (አዳማ)</option>
+                        <option value="Dire Dawa">Dire Dawa (ድሬዳዋ)</option>
+                        <option value="Bahir Dar">Bahir Dar (ባሕር ዳር)</option>
+                        <option value="Gondar">Gondar (ጎንደር)</option>
+                      </select>
+                    </div>
+
+                    {/* Ethiopian Phone Number */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Ethiopian Contact Phone *
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="0911 234 567 or 07..."
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-orange-500 focus:bg-white transition-all font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Delivery Notes */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Kitchen / Driver Instructions (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Ring the bell twice, extra mitmita / awaze on the side..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-orange-500 focus:bg-white transition-all resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="px-6 py-3 border border-slate-200 hover:bg-slate-50 rounded-2xl font-bold text-xs text-slate-600 transition-colors"
+                  >
+                    ← Back to Cart
+                  </button>
+                  <button
+                    onClick={() => setStep(3)}
+                    className="px-8 py-3.5 bg-gradient-to-r from-orange-500 via-red-500 to-rose-500 text-white rounded-2xl font-display font-bold text-sm shadow-md shadow-orange-500/25 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    <span>Choose Payment</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: PAYMENT METHOD */}
+            {step === 3 && (
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/60 shadow-sm animate-fade-in-up">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                  <h2 className="font-display font-bold text-xl text-slate-900">💳 Select Payment Method</h2>
+                  <span className="text-xs font-bold text-slate-400">Step 3 of 3</span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                  {[
+                    {
+                      id: 'telebirr',
+                      name: 'Telebirr',
+                      provider: 'Ethio Telecom',
+                      badge: 'Instant C2B',
+                      color: 'border-emerald-500 bg-emerald-50/50',
+                      indicator: 'bg-emerald-500',
+                      icon: '📱',
+                    },
+                    {
+                      id: 'mpesa',
+                      name: 'M-Pesa Ethiopia',
+                      provider: 'Safaricom Ethiopia',
+                      badge: 'Fast & Secure',
+                      color: 'border-red-500 bg-red-50/50',
+                      indicator: 'bg-red-500',
+                      icon: '🔴',
+                    },
+                    {
+                      id: 'cbebirr',
+                      name: 'CBE Birr',
+                      provider: 'Commercial Bank of Ethiopia',
+                      badge: 'Bank Transfer',
+                      color: 'border-sky-500 bg-sky-50/50',
+                      indicator: 'bg-sky-500',
+                      icon: '🏦',
+                    },
+                    {
+                      id: 'cash',
+                      name: 'Cash on Delivery',
+                      provider: 'Pay Driver Directly',
+                      badge: 'Zero Risk',
+                      color: 'border-amber-500 bg-amber-50/50',
+                      indicator: 'bg-amber-500',
+                      icon: '💵',
+                    },
+                  ].map((method) => {
+                    const isSelected = paymentMethod === method.id;
+                    return (
+                      <div
+                        key={method.id}
+                        onClick={() => setPaymentMethod(method.id as typeof paymentMethod)}
+                        className={`p-4.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between ${
+                          isSelected
+                            ? `${method.color} shadow-sm scale-[1.02]`
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="text-2xl">{method.icon}</span>
+                          <span
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? 'border-orange-500 bg-orange-500 text-white' : 'border-slate-300'
+                            }`}
+                          >
+                            {isSelected && <span className="text-xs">✓</span>}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-display font-bold text-slate-900 text-sm sm:text-base">
+                            {method.name}
+                          </h4>
+                          <p className="text-[11px] text-slate-500">{method.provider}</p>
+                          <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-600">
+                            {method.badge}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {paymentMethod !== 'cash' ? (
+                  <div className="p-4 bg-orange-50/70 border border-orange-200/80 rounded-2xl text-xs text-orange-800 leading-relaxed">
+                    🔔 <strong>Notice:</strong> After clicking "Place Order", a payment prompt will be dispatched to your phone (<strong className="font-mono">{phone || 'provided phone'}</strong>). Confirm with your PIN to authorize.
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600 leading-relaxed">
+                    💵 <strong>Cash on Delivery:</strong> Please prepare exact cash of <strong className="text-slate-900">{grandTotal.toFixed(0)} ETB</strong> for the delivery driver upon arrival.
+                  </div>
+                )}
+
+                <div className="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center">
+                  <button
+                    onClick={() => setStep(2)}
+                    className="px-6 py-3 border border-slate-200 hover:bg-slate-50 rounded-2xl font-bold text-xs text-slate-600 transition-colors"
+                  >
+                    ← Back to Address
+                  </button>
+                  <button
+                    onClick={handleCheckout}
+                    disabled={loading}
+                    className="px-8 py-4 bg-gradient-to-r from-orange-500 via-red-500 to-rose-500 text-white rounded-2xl font-display font-bold text-base shadow-lg shadow-orange-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Processing Order...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Place Order • {grandTotal.toFixed(0)} ETB</span>
+                        <span>🚀</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Right Column: Order Summary Card */}
+          <div className="lg:col-span-5 sticky top-24">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/70 shadow-xl shadow-orange-500/5">
+              <h3 className="font-display font-bold text-lg text-slate-900 mb-4 pb-3 border-b border-slate-100">
+                Order Receipt Summary
+              </h3>
+
+              <div className="space-y-3 mb-4 max-h-52 overflow-y-auto pr-1">
+                {items.map((item) => (
+                  <div key={item.food._id} className="flex justify-between text-xs text-slate-600">
+                    <span className="truncate pr-2 font-medium">
+                      {item.quantity}× {item.food.name}
+                    </span>
+                    <span className="font-bold text-slate-800 flex-shrink-0">
+                      {(item.food.price * item.quantity).toFixed(0)} ETB
+                    </span>
+                  </div>
                 ))}
               </div>
 
-              {paymentMethod !== 'cash' && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    📱 You will receive a payment prompt on your phone ({phone || 'enter phone number'})
-                  </p>
+              <div className="space-y-2.5 pt-4 border-t border-slate-100 text-xs text-slate-500">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="font-bold text-slate-700">{totalAmount.toFixed(0)} ETB</span>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span>Standard Delivery (Addis)</span>
+                  <span className="font-bold text-slate-700">{deliveryFee.toFixed(0)} ETB</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>VAT (15%)</span>
+                  <span className="font-bold text-slate-700">{tax.toFixed(0)} ETB</span>
+                </div>
+              </div>
 
-              <div className="flex gap-4 mt-6">
-                <button onClick={() => setStep(2)} className="flex-1 border py-3 rounded-lg">Back</button>
-                <button
-                  onClick={handleCheckout}
-                  disabled={loading}
-                  className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold disabled:opacity-50"
-                >
-                  {loading ? 'Processing...' : `Pay ${grandTotal.toFixed(2)} ETB`}
-                </button>
+              <div className="pt-4 mt-4 border-t border-slate-200 flex justify-between items-baseline">
+                <div>
+                  <span className="font-display font-black text-xl text-slate-900 block">Total Due</span>
+                  <span className="text-[10px] text-slate-400">Includes all taxes and delivery</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-display font-black text-3xl bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                    {grandTotal.toFixed(0)}
+                  </span>
+                  <span className="text-xs font-bold text-slate-500 ml-1">ETB</span>
+                </div>
+              </div>
+
+              <div className="mt-6 p-3 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-2.5 text-xs text-emerald-800 font-medium">
+                <span>🛡️</span>
+                <span>Protected by FoodHub 100% Satisfaction Guarantee</span>
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="bg-white rounded-lg shadow p-6 h-fit">
-          <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-          <div className="space-y-2 text-sm">
-            {items.map((item) => (
-              <div key={item.food._id} className="flex justify-between">
-                <span>{item.quantity}x {item.food.name}</span>
-                <span>{(item.food.price * item.quantity).toFixed(2)} ETB</span>
-              </div>
-            ))}
-          </div>
-          <hr className="my-4" />
-          <div className="space-y-2">
-            <div className="flex justify-between"><span>Subtotal</span><span>{totalAmount.toFixed(2)} ETB</span></div>
-            <div className="flex justify-between"><span>Delivery</span><span>{deliveryFee.toFixed(2)} ETB</span></div>
-            <div className="flex justify-between"><span>VAT (15%)</span><span>{tax.toFixed(2)} ETB</span></div>
-          </div>
-          <hr className="my-4" />
-          <div className="flex justify-between text-xl font-bold">
-            <span>Total</span>
-            <span className="text-orange-500">{grandTotal.toFixed(2)} ETB</span>
-          </div>
-          <div className="mt-4 p-3 bg-green-50 rounded-lg text-sm text-green-700">
-            🚗 Delivery: 30-45 mins
-          </div>
         </div>
       </div>
     </div>
