@@ -159,10 +159,11 @@ const CashierStation = () => {
 
         <div className="flex items-center gap-3">
           <a
-            href="/pos"
-            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-emerald-950/50"
+            href="/waiter"
+            className="flex items-center gap-2 bg-slate-900 border border-amber-500/30 hover:border-amber-500/60 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs transition-all"
+            title="Open Waiter Station to add dishes or take table orders"
           >
-            <span>⚡</span> Open Quick POS Register
+            <span>🛎️</span> Waiter Station (Table Food Orders)
           </a>
           <button
             onClick={loadData}

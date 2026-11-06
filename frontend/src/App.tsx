@@ -23,7 +23,6 @@ import DeliveryStation from './pages/DeliveryStation';
 import StaffLogin from './pages/staff/StaffLogin';
 import StaffRegister from './pages/staff/StaffRegister';
 import AcceptInvitation from './pages/staff/AcceptInvitation';
-import StaffManagement from './pages/admin/StaffManagement';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -117,9 +116,9 @@ function App() {
           <Route path="/staff/accept-invitation" element={<AcceptInvitation />} />
 
           {/* Admin Staff RBAC & Approvals */}
-          <Route path="/admin/staff" element={<StaffManagement />} />
-          <Route path="/admin/staff/requests" element={<StaffManagement />} />
-          <Route path="/admin/staff/activity" element={<StaffManagement />} />
+          <Route path="/admin/staff" element={<Navigate to="/admin?tab=staff" replace />} />
+          <Route path="/admin/staff/requests" element={<Navigate to="/admin?tab=staff" replace />} />
+          <Route path="/admin/staff/activity" element={<Navigate to="/admin?tab=staff" replace />} />
 
           {/* Dedicated Staff Workstations */}
           <Route path="/waiter" element={<WaiterStation />} />

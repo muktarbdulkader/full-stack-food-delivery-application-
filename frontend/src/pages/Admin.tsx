@@ -150,10 +150,11 @@ const Admin = () => {
 
   const menuItems = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-    { id: 'tables', icon: '🪑', label: 'Tables & QR Codes' },
-    { id: 'waiters', icon: '🔔', label: 'Waiter Buzzers' },
-    { id: 'foods', icon: '🍽️', label: 'Menu Management' },
     { id: 'orders', icon: '📦', label: 'Orders' },
+    { id: 'foods', icon: '🍽️', label: 'Menu Management' },
+    { id: 'tables', icon: '🪑', label: 'Tables & QR' },
+    { id: 'waiters', icon: '🔔', label: 'Waiter Buzzers' },
+    { id: 'staff', icon: '🛡️', label: 'Staff & Approvals' },
     { id: 'payments', icon: '💳', label: 'Payments' },
     { id: 'analytics', icon: '📈', label: 'Analytics' },
     { id: 'settings', icon: '⚙️', label: 'Settings' },
@@ -342,10 +343,6 @@ const Admin = () => {
 
             <div className="pt-4 mt-2 border-t border-slate-700/50">
               <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Dedicated Staff Hubs</p>
-              <Link to="/admin/staff" className="w-full flex items-center gap-3 px-4 py-2 text-emerald-400 hover:bg-slate-800/60 rounded-xl transition font-semibold">
-                <span className="text-lg">🛡️</span>
-                <span className="font-medium text-sm">Staff RBAC &amp; Approvals</span>
-              </Link>
               <Link to="/cashier" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
                 <span className="text-lg">💵</span>
                 <span className="font-medium text-sm">Cashier Desk</span>
@@ -408,28 +405,161 @@ const Admin = () => {
       {/* Main Content */}
       <div className="lg:ml-72 min-h-screen">
         {/* Desktop Header */}
-        <header className="hidden lg:block sticky top-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 px-8 py-4">
+        <header className="hidden lg:block sticky top-0 z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-8 py-3.5">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-white capitalize">{tab === 'foods' ? 'Menu Management' : tab}</h2>
-              <p className="text-slate-400 text-sm">Welcome back! Here's what's happening today.</p>
+            <div className="flex items-center space-x-4">
+              <div>
+                <h2 className="text-xl font-bold text-white capitalize">
+                  {tab === 'foods'
+                    ? 'Menu Management'
+                    : tab === 'staff'
+                    ? 'Staff Access & Approvals'
+                    : tab}
+                </h2>
+                <div className="flex items-center space-x-2 text-xs text-slate-400 mt-0.5">
+                  <span>FoodHub ERP Enterprise</span>
+                  <span>•</span>
+                  <span className="text-emerald-400 font-medium">Live Operational State</span>
+                </div>
+              </div>
+
+              {/* Branch Selector Pill */}
+              <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 space-x-2">
+                <span className="text-xs text-slate-400">Branch:</span>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => {
+                    const b = e.target.value as any;
+                    setSelectedBranch(b);
+                    localStorage.setItem('selectedBranch', b);
+                  }}
+                  className="bg-transparent text-xs text-amber-300 font-bold focus:outline-none cursor-pointer"
+                >
+                  <option value="HRM-01" className="bg-slate-900 text-white">
+                    Haramaya Campus (HRM-01)
+                  </option>
+                  <option value="BOL-01" className="bg-slate-900 text-white">
+                    Bole Branch (BOL-01)
+                  </option>
+                  <option value="all" className="bg-slate-900 text-white">
+                    All Branches Consolidated
+                  </option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl px-4 py-2 border border-slate-700/50">
-                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none text-white placeholder-slate-500 w-48" />
-              </div>
+
+            <div className="flex items-center gap-3">
+              {/* Workstations Quick Launch Dropdown */}
               <div className="relative">
-                <button className="p-3 text-slate-400 hover:text-white bg-slate-800/50 rounded-xl border border-slate-700/50 relative">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                  {pendingOrders > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">{pendingOrders}</span>}
+                <button
+                  onClick={() => setShowWorkstationMenu(!showWorkstationMenu)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm"
+                >
+                  <span>⚡ Workstations</span>
+                  <span className="text-[10px]">▾</span>
                 </button>
+
+                {showWorkstationMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 text-xs">
+                    <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                      Open Operational Workspace
+                    </p>
+                    <Link
+                      to="/cashier"
+                      target="_blank"
+                      onClick={() => setShowWorkstationMenu(false)}
+                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <span className="text-base">💰</span>
+                      <div>
+                        <p className="font-semibold text-white">Cashier Desk</p>
+                        <p className="text-[10px] text-slate-400">/cashier</p>
+                      </div>
+                    </Link>
+                    <Link
+                      to="/waiter"
+                      target="_blank"
+                      onClick={() => setShowWorkstationMenu(false)}
+                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <span className="text-base">🛎️</span>
+                      <div>
+                        <p className="font-semibold text-white">Waiter Station</p>
+                        <p className="text-[10px] text-slate-400">/waiter</p>
+                      </div>
+                    </Link>
+                    <Link
+                      to="/kds"
+                      target="_blank"
+                      onClick={() => setShowWorkstationMenu(false)}
+                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <span className="text-base">🍳</span>
+                      <div>
+                        <p className="font-semibold text-white">Kitchen KDS</p>
+                        <p className="text-[10px] text-slate-400">/kds</p>
+                      </div>
+                    </Link>
+                    <Link
+                      to="/delivery"
+                      target="_blank"
+                      onClick={() => setShowWorkstationMenu(false)}
+                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <span className="text-base">🛵</span>
+                      <div>
+                        <p className="font-semibold text-white">Driver Dispatch</p>
+                        <p className="text-[10px] text-slate-400">/delivery</p>
+                      </div>
+                    </Link>
+                    <div className="my-1 border-t border-slate-800" />
+                    <Link
+                      to="/pos"
+                      target="_blank"
+                      onClick={() => setShowWorkstationMenu(false)}
+                      className="flex items-center space-x-2.5 px-3 py-2 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition"
+                    >
+                      <span className="text-base">🏪</span>
+                      <div>
+                        <p className="font-semibold">POS Register (Full)</p>
+                        <p className="text-[10px] text-slate-400">/pos</p>
+                      </div>
+                    </Link>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl px-4 py-2 border border-slate-700/50">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold">A</div>
-                <div className="hidden xl:block">
-                  <p className="font-medium text-white text-sm">Admin</p>
-                  <p className="text-xs text-slate-400">Hotel Manager</p>
+
+              {/* Pending Orders Notification Pill */}
+              <button
+                onClick={() => setTab('orders')}
+                className="p-2.5 text-slate-400 hover:text-white bg-slate-950 rounded-xl border border-slate-800 relative transition"
+                title="View Pending Orders"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+                {pendingOrders > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                    {pendingOrders}
+                  </span>
+                )}
+              </button>
+
+              {/* Admin Avatar */}
+              <div className="flex items-center gap-3 bg-slate-950 rounded-xl px-3.5 py-1.5 border border-slate-800">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs shadow-md">
+                  ADM
+                </div>
+                <div>
+                  <p className="font-semibold text-white text-xs leading-none">
+                    {admin?.name || 'Hotel Administrator'}
+                  </p>
+                  <p className="text-[10px] text-emerald-400 font-mono mt-0.5">super_admin</p>
                 </div>
               </div>
             </div>
@@ -438,13 +568,44 @@ const Admin = () => {
 
         {/* Content */}
         <main className="p-4 lg:p-8 pt-20 lg:pt-8">
-          {tab === 'dashboard' && <DashboardTab totalRevenue={totalRevenue} orders={orders} foods={foods} pendingOrders={pendingOrders} todayOrders={todayOrders} paidOrders={paidOrders} preparingOrders={preparingOrders} deliveredOrders={deliveredOrders} setTab={setTab} />}
+          {tab === 'dashboard' && (
+            <DashboardTab
+              totalRevenue={totalRevenue}
+              orders={orders}
+              foods={foods}
+              pendingOrders={pendingOrders}
+              todayOrders={todayOrders}
+              paidOrders={paidOrders}
+              preparingOrders={preparingOrders}
+              deliveredOrders={deliveredOrders}
+              setTab={setTab}
+            />
+          )}
           {tab === 'tables' && <TablesTab />}
           {tab === 'waiters' && <WaitersTab />}
-          {tab === 'foods' && <FoodsTab foods={foods} openAddModal={openAddModal} openEditModal={openEditModal} handleDelete={handleDelete} />}
-          {tab === 'orders' && <OrdersTab orders={orders} updateOrderStatus={updateOrderStatus} onConfirmPayment={handleConfirmPayment} onAssignDriver={handleAssignDriver} />}
-          {tab === 'payments' && <PaymentsTab orders={orders} totalRevenue={totalRevenue} paidOrders={paidOrders} />}
-          {tab === 'analytics' && <AnalyticsTab orders={orders} foods={foods} totalRevenue={totalRevenue} />}
+          {tab === 'foods' && (
+            <FoodsTab
+              foods={foods}
+              openAddModal={openAddModal}
+              openEditModal={openEditModal}
+              handleDelete={handleDelete}
+            />
+          )}
+          {tab === 'orders' && (
+            <OrdersTab
+              orders={orders}
+              updateOrderStatus={updateOrderStatus}
+              onConfirmPayment={handleConfirmPayment}
+              onAssignDriver={handleAssignDriver}
+            />
+          )}
+          {tab === 'staff' && <StaffManagement embedded={true} />}
+          {tab === 'payments' && (
+            <PaymentsTab orders={orders} totalRevenue={totalRevenue} paidOrders={paidOrders} />
+          )}
+          {tab === 'analytics' && (
+            <AnalyticsTab orders={orders} foods={foods} totalRevenue={totalRevenue} />
+          )}
           {tab === 'settings' && <SettingsTab />}
         </main>
       </div>
