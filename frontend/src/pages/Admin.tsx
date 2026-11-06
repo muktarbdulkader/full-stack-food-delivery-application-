@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../store/store';
 import { adminLogout, setAdminCredentials } from '../store/authSlice';
@@ -7,10 +7,23 @@ import { foodService } from '../services/food.service';
 import { adminService } from '../services/admin.service';
 import { authService } from '../services/auth.service';
 import type { Food, Order } from '../services/food.service';
+import StaffManagement from './admin/StaffManagement';
+
+export type AdminTab =
+  | 'dashboard'
+  | 'orders'
+  | 'foods'
+  | 'tables'
+  | 'waiters'
+  | 'staff'
+  | 'payments'
+  | 'analytics'
+  | 'settings';
 
 const Admin = () => {
   const { isAdminAuthenticated, admin } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Auth state
   const [showAuth, setShowAuth] = useState(false);
@@ -19,7 +32,25 @@ const Admin = () => {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  const [tab, setTab] = useState<'dashboard' | 'tables' | 'waiters' | 'foods' | 'orders' | 'payments' | 'analytics' | 'settings'>('dashboard');
+  // Sync tab with URL search parameter
+  const initialTab = (searchParams.get('tab') as AdminTab) || 'dashboard';
+  const [tab, setTabState] = useState<AdminTab>(initialTab);
+  const [selectedBranch, setSelectedBranch] = useState<'all' | 'HRM-01' | 'BOL-01'>(
+    (localStorage.getItem('selectedBranch') as any) || 'HRM-01'
+  );
+  const [showWorkstationMenu, setShowWorkstationMenu] = useState(false);
+
+  const setTab = (newTab: AdminTab) => {
+    setTabState(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
+  useEffect(() => {
+    const queryTab = searchParams.get('tab') as AdminTab;
+    if (queryTab && queryTab !== tab) {
+      setTabState(queryTab);
+    }
+  }, [searchParams]);
   const [foods, setFoods] = useState<Food[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
