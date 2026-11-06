@@ -1,23 +1,70 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export interface IFoodPortion {
+  name: string; // "Small", "Regular", "Large", "Full Injera"
+  price: number;
+  isDefault?: boolean;
+}
+
+export interface IFoodExtra {
+  name: string; // "Extra Cheese", "Extra Tibs Meat", "Awaze", "Ayib"
+  price: number;
+}
+
 export interface IFood extends Document {
   _id: mongoose.Types.ObjectId;
+  organizationId?: mongoose.Types.ObjectId;
+  branchId?: mongoose.Types.ObjectId;
   name: string;
   description: string;
   price: number;
   category: string;
   image: string;
+  portions?: IFoodPortion[];
+  extras?: IFoodExtra[];
+  spiceLevel?: 'Mild' | 'Medium' | 'Spicy' | 'Very Hot';
+  isFasting?: boolean; // Ethiopian fasting / ጾም
   isAvailable: boolean;
+  preparationTimeMinutes: number;
+  kitchenStation: string; // e.g. "Grill", "Stew", "Oven", "Beverage"
   createdAt: Date;
   updatedAt: Date;
 }
 
+const foodPortionSchema = new Schema<IFoodPortion>(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    isDefault: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const foodExtraSchema = new Schema<IFoodExtra>(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const foodSchema = new Schema<IFood>(
   {
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      index: true,
+    },
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Branch',
+      index: true,
+    },
     name: {
       type: String,
       required: [true, 'Food name is required'],
       trim: true,
+      index: true,
     },
     description: {
       type: String,
@@ -33,14 +80,40 @@ const foodSchema = new Schema<IFood>(
       type: String,
       required: [true, 'Category is required'],
       trim: true,
+      index: true,
     },
     image: {
       type: String,
-      default: 'https://via.placeholder.com/300x200?text=Food',
+      default: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=700',
+    },
+    portions: {
+      type: [foodPortionSchema],
+      default: [],
+    },
+    extras: {
+      type: [foodExtraSchema],
+      default: [],
+    },
+    spiceLevel: {
+      type: String,
+      enum: ['Mild', 'Medium', 'Spicy', 'Very Hot'],
+      default: 'Medium',
+    },
+    isFasting: {
+      type: Boolean,
+      default: false,
     },
     isAvailable: {
       type: Boolean,
       default: true,
+    },
+    preparationTimeMinutes: {
+      type: Number,
+      default: 20,
+    },
+    kitchenStation: {
+      type: String,
+      default: 'Main Kitchen',
     },
   },
   {

@@ -1,13 +1,37 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export type UserRole =
+  | 'super_admin'
+  | 'business_owner'
+  | 'branch_manager'
+  | 'restaurant_admin'
+  | 'accountant'
+  | 'inventory_manager'
+  | 'cashier'
+  | 'waiter'
+  | 'chef'
+  | 'storekeeper'
+  | 'hr_manager'
+  | 'delivery_manager'
+  | 'driver'
+  | 'user'
+  | 'admin'
+  | 'guest';
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
   password: string;
-  role: 'user' | 'admin';
+  role: UserRole;
+  organizationId?: mongoose.Types.ObjectId;
+  branchId?: mongoose.Types.ObjectId;
+  assignedBranches?: mongoose.Types.ObjectId[];
+  permissions?: string[];
   address?: string;
   phone?: string;
+  isActive: boolean;
+  lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,8 +58,46 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: [
+        'super_admin',
+        'business_owner',
+        'branch_manager',
+        'restaurant_admin',
+        'accountant',
+        'inventory_manager',
+        'cashier',
+        'waiter',
+        'chef',
+        'storekeeper',
+        'hr_manager',
+        'delivery_manager',
+        'driver',
+        'user',
+        'admin',
+        'guest',
+      ],
       default: 'user',
+      index: true,
+    },
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      index: true,
+    },
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Branch',
+      index: true,
+    },
+    assignedBranches: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Branch',
+      },
+    ],
+    permissions: {
+      type: [String],
+      default: [],
     },
     address: {
       type: String,
@@ -44,6 +106,13 @@ const userSchema = new Schema<IUser>(
     phone: {
       type: String,
       trim: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLoginAt: {
+      type: Date,
     },
   },
   {

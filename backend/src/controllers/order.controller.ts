@@ -93,7 +93,7 @@ export const getOrderById = async (
 
     if (!order) throw createError('Order not found', 404);
 
-    if (req.user!.role !== 'admin' && order.user._id.toString() !== req.user!._id.toString()) {
+    if (req.user!.role !== 'admin' && (!order.user || order.user?._id?.toString() !== req.user!._id.toString())) {
       throw createError('Not authorized', 403);
     }
 

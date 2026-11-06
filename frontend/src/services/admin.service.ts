@@ -87,4 +87,48 @@ export const adminService = {
     const response = await adminApi.get('/admin/users');
     return response.data;
   },
+
+  // Branch & Organization Management
+  async getBranches(): Promise<{ data: { branches: any[] } }> {
+    const response = await adminApi.get('/organization/branches');
+    return response.data;
+  },
+
+  // Table & QR Management
+  async getAllTables(branchId?: string): Promise<{ data: { tables: any[] } }> {
+    const params = branchId ? { branchId } : {};
+    const response = await adminApi.get('/tables', { params });
+    return response.data;
+  },
+
+  async createTable(data: any): Promise<{ data: { table: any } }> {
+    const response = await adminApi.post('/tables', data);
+    return response.data;
+  },
+
+  async updateTable(id: string, data: any): Promise<{ data: { table: any } }> {
+    const response = await adminApi.put(`/tables/${id}`, data);
+    return response.data;
+  },
+
+  async deleteTable(id: string): Promise<void> {
+    await adminApi.delete(`/tables/${id}`);
+  },
+
+  async regenerateQRCode(id: string): Promise<any> {
+    const response = await adminApi.post(`/tables/${id}/regenerate-qr`);
+    return response.data;
+  },
+
+  // Waiter Service Requests
+  async getWaiterRequests(branchId?: string): Promise<{ data: { requests: any[] } }> {
+    const params = branchId ? { branchId } : {};
+    const response = await adminApi.get('/waiters', { params });
+    return response.data;
+  },
+
+  async updateWaiterRequest(id: string, status: string): Promise<{ data: { request: any } }> {
+    const response = await adminApi.patch(`/waiters/${id}/status`, { status });
+    return response.data;
+  },
 };

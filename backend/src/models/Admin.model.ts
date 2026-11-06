@@ -1,11 +1,16 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { UserRole } from './User.model';
 
 export interface IAdmin extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
   password: string;
-  role: 'admin';
+  role: UserRole;
+  isActive: boolean;
+  organizationId?: mongoose.Types.ObjectId;
+  branchId?: mongoose.Types.ObjectId;
+  permissions?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,8 +37,26 @@ const adminSchema = new Schema<IAdmin>(
     },
     role: {
       type: String,
-      enum: ['admin'],
       default: 'admin',
+      index: true,
+    },
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      index: true,
+    },
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Branch',
+      index: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    permissions: {
+      type: [String],
+      default: ['all'],
     },
   },
   {

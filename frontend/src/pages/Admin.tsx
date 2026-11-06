@@ -19,7 +19,7 @@ const Admin = () => {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  const [tab, setTab] = useState<'dashboard' | 'foods' | 'orders' | 'payments' | 'analytics' | 'settings'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'tables' | 'waiters' | 'foods' | 'orders' | 'payments' | 'analytics' | 'settings'>('dashboard');
   const [foods, setFoods] = useState<Food[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +119,8 @@ const Admin = () => {
 
   const menuItems = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { id: 'tables', icon: '🪑', label: 'Tables & QR Codes' },
+    { id: 'waiters', icon: '🔔', label: 'Waiter Buzzers' },
     { id: 'foods', icon: '🍽️', label: 'Menu Management' },
     { id: 'orders', icon: '📦', label: 'Orders' },
     { id: 'payments', icon: '💳', label: 'Payments' },
@@ -356,6 +358,8 @@ const Admin = () => {
         {/* Content */}
         <main className="p-4 lg:p-8 pt-20 lg:pt-8">
           {tab === 'dashboard' && <DashboardTab totalRevenue={totalRevenue} orders={orders} foods={foods} pendingOrders={pendingOrders} todayOrders={todayOrders} paidOrders={paidOrders} preparingOrders={preparingOrders} deliveredOrders={deliveredOrders} setTab={setTab} />}
+          {tab === 'tables' && <TablesTab />}
+          {tab === 'waiters' && <WaitersTab />}
           {tab === 'foods' && <FoodsTab foods={foods} openAddModal={openAddModal} openEditModal={openEditModal} handleDelete={handleDelete} />}
           {tab === 'orders' && <OrdersTab orders={orders} updateOrderStatus={updateOrderStatus} onConfirmPayment={handleConfirmPayment} onAssignDriver={handleAssignDriver} />}
           {tab === 'payments' && <PaymentsTab orders={orders} totalRevenue={totalRevenue} paidOrders={paidOrders} />}
@@ -1165,6 +1169,547 @@ const StatusBadge = ({ status }: { status: string }) => {
     cancelled: 'bg-red-500/20 text-red-400',
   };
   return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] || 'bg-slate-500/20 text-slate-400'}`}>{status.replace('_', ' ')}</span>;
+};
+
+// =========================================================
+// MODULE B: TABLES & QR CODE MANAGEMENT TAB
+// =========================================================
+const TablesTab = () => {
+  const [tables, setTables] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [selectedArea, setSelectedArea] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printTable, setPrintTable] = useState<any>(null);
+
+  const [form, setForm] = useState({
+    branchId: '',
+    tableNumber: '',
+    name: '',
+    diningArea: 'Main Dining Hall',
+    capacity: 4,
+    notes: '',
+  });
+
+  useEffect(() => {
+    loadData();
+  }, [selectedBranch]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [branchesRes, tablesRes] = await Promise.all([
+        adminService.getBranches().catch(() => ({ data: { branches: [] } })),
+        adminService.getAllTables(selectedBranch || undefined).catch(() => ({ data: { tables: [] } })),
+      ]);
+
+      const branchList = branchesRes.data.branches || [];
+      setBranches(branchList);
+      if (!selectedBranch && branchList.length > 0) {
+        setSelectedBranch(branchList[0]._id);
+      }
+      setTables(tablesRes.data.tables || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminService.createTable({
+        ...form,
+        branchId: form.branchId || selectedBranch,
+        capacity: Number(form.capacity),
+      });
+      setShowAddModal(false);
+      setForm({ branchId: selectedBranch, tableNumber: '', name: '', diningArea: 'Main Dining Hall', capacity: 4, notes: '' });
+      loadData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create table');
+    }
+  };
+
+  const handleStatusChange = async (tableId: string, newStatus: string) => {
+    try {
+      await adminService.updateTable(tableId, { status: newStatus });
+      setTables(tables.map((t) => (t._id === tableId ? { ...t, status: newStatus } : t)));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update table status');
+    }
+  };
+
+  const handleRegenerateQR = async (tableId: string) => {
+    if (!confirm('Regenerate QR Code? Existing printed QR codes for this table will become inactive.')) return;
+    try {
+      const res = await adminService.regenerateQRCode(tableId);
+      setTables(
+        tables.map((t) =>
+          t._id === tableId
+            ? { ...t, qrCodeUrl: res.data.qrCodeUrl, qrToken: res.data.qrToken }
+            : t
+        )
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to regenerate QR code');
+    }
+  };
+
+  const handleDeleteTable = async (tableId: string) => {
+    if (!confirm('Are you sure you want to deactivate this table?')) return;
+    try {
+      await adminService.deleteTable(tableId);
+      setTables(tables.filter((t) => t._id !== tableId));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete table');
+    }
+  };
+
+  const openPrintStandee = (table: any) => {
+    setPrintTable(table);
+    setShowPrintModal(true);
+  };
+
+  const filteredTables = tables.filter((t) => {
+    if (selectedArea !== 'all' && t.diningArea !== selectedArea) return false;
+    return true;
+  });
+
+  const areas = ['all', ...Array.from(new Set(tables.map((t) => t.diningArea).filter(Boolean)))];
+
+  return (
+    <div className="space-y-6">
+      {/* Top Controls Bar */}
+      <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-5 border border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span>🪑</span>
+            <span>Restaurant Table & QR Management</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Manage physical dining tables, generate cryptographically signed QR codes & track live occupancy.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {branches.length > 0 && (
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amber-500"
+            >
+              {branches.map((b) => (
+                <option key={b._id} value={b._id}>
+                  📍 {b.name} ({b.code})
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            onClick={() => {
+              setForm({ ...form, branchId: selectedBranch });
+              setShowAddModal(true);
+            }}
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5"
+          >
+            <span>➕</span>
+            <span>Register Table</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Area Filter Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {areas.map((area) => (
+          <button
+            key={area}
+            onClick={() => setSelectedArea(area)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              selectedArea === area
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'bg-slate-800/60 text-slate-400 hover:text-white border border-slate-700/50'
+            }`}
+          >
+            {area === 'all' ? 'All Dining Areas' : area}
+          </button>
+        ))}
+      </div>
+
+      {/* Tables Grid */}
+      {loading ? (
+        <div className="py-20 text-center text-slate-400 text-xs">Loading table registry...</div>
+      ) : filteredTables.length === 0 ? (
+        <div className="bg-slate-800/40 rounded-2xl p-12 text-center border border-slate-700/50">
+          <span className="text-5xl block mb-3">🪑</span>
+          <p className="font-bold text-white mb-1">No tables registered yet</p>
+          <p className="text-xs text-slate-400 mb-4">Click "Register Table" to add your first dining table with a QR code.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filteredTables.map((table) => {
+            const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
+              available: { bg: 'bg-emerald-500/10 border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+              occupied: { bg: 'bg-blue-500/10 border-blue-500/30', text: 'text-blue-400', dot: 'bg-blue-400' },
+              waiting_for_food: { bg: 'bg-violet-500/10 border-violet-500/30', text: 'text-violet-400', dot: 'bg-violet-400 animate-pulse' },
+              waiting_for_payment: { bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-400', dot: 'bg-amber-400 animate-ping' },
+              reserved: { bg: 'bg-purple-500/10 border-purple-500/30', text: 'text-purple-400', dot: 'bg-purple-400' },
+              cleaning: { bg: 'bg-rose-500/10 border-rose-500/30', text: 'text-rose-400', dot: 'bg-rose-400' },
+              out_of_service: { bg: 'bg-slate-500/10 border-slate-500/30', text: 'text-slate-400', dot: 'bg-slate-400' },
+            };
+            const sc = statusColors[table.status] || statusColors.available;
+
+            return (
+              <div
+                key={table._id}
+                className="bg-slate-800/60 rounded-2xl p-5 border border-slate-700/50 hover:border-slate-600 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-display font-black text-lg shadow-md shadow-amber-500/20">
+                        {table.tableNumber}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-base">{table.name}</h3>
+                        <p className="text-xs text-slate-400">{table.diningArea} • {table.capacity} Seats</p>
+                      </div>
+                    </div>
+
+                    <div className={`px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${sc.bg} ${sc.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                      <span className="capitalize">{table.status.replace(/_/g, ' ')}</span>
+                    </div>
+                  </div>
+
+                  {/* QR Preview & Info */}
+                  <div className="flex items-center gap-3 p-3 bg-slate-900/60 rounded-xl border border-slate-700/40 mb-4">
+                    {table.qrCodeUrl ? (
+                      <img src={table.qrCodeUrl} alt="QR Code" className="w-14 h-14 bg-white rounded-lg p-1 object-contain" />
+                    ) : (
+                      <div className="w-14 h-14 bg-slate-800 rounded-lg flex items-center justify-center text-xs text-slate-500">QR</div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] text-slate-400 font-mono truncate">Token: {table.qrToken.slice(0, 16)}...</p>
+                      <button
+                        onClick={() => openPrintStandee(table)}
+                        className="text-amber-400 hover:text-amber-300 text-xs font-bold mt-1 inline-flex items-center gap-1"
+                      >
+                        <span>🖨️</span>
+                        <span>Print Table Standee</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Override & Actions */}
+                <div className="pt-3 border-t border-slate-700/50 flex items-center justify-between gap-2">
+                  <select
+                    value={table.status}
+                    onChange={(e) => handleStatusChange(table._id, e.target.value)}
+                    className="bg-slate-700/60 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none"
+                  >
+                    <option value="available">Set Available</option>
+                    <option value="occupied">Set Occupied</option>
+                    <option value="waiting_for_food">Waiting for Food</option>
+                    <option value="food_ready">Food Ready</option>
+                    <option value="waiting_for_payment">Waiting for Payment</option>
+                    <option value="cleaning">Cleaning</option>
+                    <option value="out_of_service">Out of Service</option>
+                  </select>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleRegenerateQR(table._id)}
+                      className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors"
+                      title="Regenerate QR Token"
+                    >
+                      🔄
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTable(table._id)}
+                      className="p-1.5 text-slate-400 hover:text-red-400 transition-colors"
+                      title="Deactivate Table"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* REGISTER TABLE MODAL */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-3xl p-6 lg:p-8 w-full max-w-md border border-slate-700 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <span>➕</span>
+                <span>Register New Dining Table</span>
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateTable} className="space-y-4">
+              <div>
+                <label className="block text-slate-300 text-xs font-bold uppercase mb-1">Table Number *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 01, 05, VIP-1"
+                  value={form.tableNumber}
+                  onChange={(e) => setForm({ ...form, tableNumber: e.target.value })}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-xs font-bold uppercase mb-1">Table Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Table 01 - Window Seat"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 text-xs font-bold uppercase mb-1">Dining Area</label>
+                  <select
+                    value={form.diningArea}
+                    onChange={(e) => setForm({ ...form, diningArea: e.target.value })}
+                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2.5 text-white text-xs focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Main Dining Hall">Main Dining Hall</option>
+                    <option value="Outdoor Patio">Outdoor Patio</option>
+                    <option value="VIP Lounge">VIP Lounge</option>
+                    <option value="Terrace Balcony">Terrace Balcony</option>
+                    <option value="Bar Area">Bar Area</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-xs font-bold uppercase mb-1">Capacity (Seats)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={form.capacity}
+                    onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
+                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-3 bg-slate-700 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-xs font-bold hover:from-amber-600 hover:to-orange-600 shadow-md"
+                >
+                  Create & Generate QR
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* PRINT TABLE STANDEE MODAL */}
+      {showPrintModal && printTable && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-3xl p-6 lg:p-8 w-full max-w-sm border border-slate-700 shadow-2xl text-center">
+            <h3 className="font-bold text-white text-lg mb-4">Print QR Standee</h3>
+
+            {/* Printable White Standee Card */}
+            <div id="printable-standee" className="bg-white rounded-2xl p-6 text-slate-900 shadow-lg mb-6 border-2 border-orange-500">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-2xl">🍔</span>
+                <span className="font-display font-black text-xl text-slate-900">FoodHub Dining</span>
+              </div>
+              <p className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-3">
+                Scan to Order & Pay
+              </p>
+
+              {printTable.qrCodeUrl ? (
+                <img src={printTable.qrCodeUrl} alt="QR Code" className="w-48 h-48 mx-auto mb-3" />
+              ) : null}
+
+              <div className="bg-slate-100 rounded-xl py-2 px-3 inline-block mb-2">
+                <p className="font-display font-black text-2xl text-slate-900">TABLE {printTable.tableNumber}</p>
+                <p className="text-[10px] text-slate-500 font-bold">{printTable.diningArea}</p>
+              </div>
+              <p className="text-[10px] text-slate-400">Point your camera to browse real menu & call waiter</p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowPrintModal(false)}
+                className="flex-1 py-2.5 bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
+              >
+                <span>🖨️</span>
+                <span>Print Standee</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// =========================================================
+// MODULE B: WAITER BUZZERS TAB (Live Staff Assistance)
+// =========================================================
+const WaitersTab = () => {
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadRequests();
+    const interval = setInterval(loadRequests, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadRequests = async () => {
+    try {
+      const res = await adminService.getWaiterRequests();
+      setRequests(res.data.requests || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await adminService.updateWaiterRequest(id, status);
+      setRequests(requests.map((r) => (r._id === id ? { ...r, status } : r)));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update request');
+    }
+  };
+
+  const pendingCount = requests.filter((r) => r.status === 'pending').length;
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-5 border border-slate-700/50 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span>🔔</span>
+            <span>Live Waiter & Table Service Buzzers</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">Real-time alerts triggered by diners from their table QR sessions.</p>
+        </div>
+
+        {pendingCount > 0 && (
+          <span className="px-3 py-1 bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-bold rounded-xl animate-pulse">
+            {pendingCount} Pending Calls
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="py-20 text-center text-slate-400 text-xs">Listening for waiter buzzers...</div>
+      ) : requests.length === 0 ? (
+        <div className="bg-slate-800/40 rounded-2xl p-12 text-center border border-slate-700/50">
+          <span className="text-5xl block mb-3">✨</span>
+          <p className="font-bold text-white mb-1">No active table calls</p>
+          <p className="text-xs text-slate-400">All dining tables are currently serviced.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {requests.map((req) => {
+            const isPending = req.status === 'pending';
+            const iconMap: Record<string, string> = {
+              waiter: '🙋 Call Waiter',
+              water: '💧 Water Refill',
+              bill: '🧾 Request Bill',
+              assistance: '💬 Assistance',
+              cleaning: '🧼 Clean Table',
+            };
+
+            return (
+              <div
+                key={req._id}
+                className={`rounded-2xl p-5 border transition-all ${
+                  isPending
+                    ? 'bg-red-500/10 border-red-500/40 shadow-lg shadow-red-500/5'
+                    : 'bg-slate-800/50 border-slate-700/50'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <span className="text-lg font-display font-black text-white">
+                      TABLE {req.tableNumber}
+                    </span>
+                    <p className="text-xs text-amber-400 font-bold mt-0.5">
+                      {iconMap[req.requestType] || req.requestType}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      isPending ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                </div>
+
+                {req.note && <p className="text-xs text-slate-300 italic mb-4">"{req.note}"</p>}
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-4">
+                  <span>Called at:</span>
+                  <span>{new Date(req.createdAt).toLocaleTimeString()}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  {isPending && (
+                    <button
+                      onClick={() => handleUpdateStatus(req._id, 'acknowledged')}
+                      className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors"
+                    >
+                      Acknowledge
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleUpdateStatus(req._id, 'resolved')}
+                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors"
+                  >
+                    Mark Resolved ✓
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Admin;
