@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 
-const getToken = () => localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+const getToken = () => localStorage.getItem('staffToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
 const apiReq = async (endpoint: string, method = 'GET', body?: any) => {
   const res = await fetch(`${API}${endpoint}`, {

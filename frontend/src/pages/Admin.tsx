@@ -311,6 +311,10 @@ const Admin = () => {
 
             <div className="pt-4 mt-2 border-t border-slate-700/50">
               <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Dedicated Staff Hubs</p>
+              <Link to="/admin/staff" className="w-full flex items-center gap-3 px-4 py-2 text-emerald-400 hover:bg-slate-800/60 rounded-xl transition font-semibold">
+                <span className="text-lg">🛡️</span>
+                <span className="font-medium text-sm">Staff RBAC &amp; Approvals</span>
+              </Link>
               <Link to="/cashier" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
                 <span className="text-lg">💵</span>
                 <span className="font-medium text-sm">Cashier Desk</span>

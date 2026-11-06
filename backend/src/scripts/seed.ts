@@ -450,6 +450,77 @@ const seedDatabase = async () => {
       console.log('✅ Employee created: Chef Solomon Tadesse (Head Chef)');
     }
 
+    // 11. Seed Staff User Logins for the Four Operational Portals
+    const staffAccounts = [
+      {
+        name: 'Selam Haile',
+        email: 'cashier@foodhub.com',
+        password: 'password123',
+        role: 'cashier' as const,
+        employeeId: 'EMP-101',
+        phone: '+251 911 100 200',
+        permissions: ['pos.create_order', 'pos.payment', 'pos.open_drawer', 'pos.refund'],
+      },
+      {
+        name: 'Dawit Mengistu',
+        email: 'waiter@foodhub.com',
+        password: 'password123',
+        role: 'waiter' as const,
+        employeeId: 'EMP-102',
+        phone: '+251 912 345 678',
+        permissions: ['waiter.create_order', 'waiter.view_tables', 'waiter.serve_food', 'waiter.call_cashier'],
+      },
+      {
+        name: 'Chef Solomon Tadesse',
+        email: 'chef@foodhub.com',
+        password: 'password123',
+        role: 'chef' as const,
+        employeeId: 'EMP-103',
+        phone: '+251 923 456 789',
+        permissions: ['kds.view_queue', 'kds.update_status', 'kds.bump_order'],
+      },
+      {
+        name: 'Kassahun Bekele',
+        email: 'driver@foodhub.com',
+        password: 'password123',
+        role: 'driver' as const,
+        employeeId: 'EMP-104',
+        phone: '+251 933 789 012',
+        permissions: ['delivery.view_assigned', 'delivery.update_status'],
+      },
+    ];
+
+    for (const acc of staffAccounts) {
+      let user = await User.findOne({ email: acc.email });
+      const hashed = await hashPassword(acc.password);
+      if (!user) {
+        await User.create({
+          name: acc.name,
+          email: acc.email,
+          password: hashed,
+          role: acc.role,
+          employeeId: acc.employeeId,
+          phone: acc.phone,
+          organizationId: organization._id,
+          branchId: haramayaBranch._id,
+          permissions: acc.permissions,
+          registrationStatus: 'active',
+          employmentStatus: 'active',
+          emailVerified: true,
+          isActive: true,
+        });
+        console.log(`✅ Staff User Created: ${acc.name} (${acc.role} - ${acc.email})`);
+      } else {
+        user.password = hashed;
+        user.role = acc.role;
+        user.employeeId = acc.employeeId;
+        user.permissions = acc.permissions;
+        user.registrationStatus = 'active';
+        user.isActive = true;
+        await user.save();
+      }
+    }
+
     console.log('\n🎉 FoodHub ERP Database Seeded Successfully!');
     console.log('====================================================');
     console.log('📌 Organization: FoodHub Restaurant Group');

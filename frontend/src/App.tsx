@@ -20,6 +20,10 @@ import HR from './pages/HR';
 import WaiterStation from './pages/WaiterStation';
 import CashierStation from './pages/CashierStation';
 import DeliveryStation from './pages/DeliveryStation';
+import StaffLogin from './pages/staff/StaffLogin';
+import StaffRegister from './pages/staff/StaffRegister';
+import AcceptInvitation from './pages/staff/AcceptInvitation';
+import StaffManagement from './pages/admin/StaffManagement';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -51,7 +55,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     location.pathname.startsWith('/hr') ||
     location.pathname.startsWith('/waiter') ||
     location.pathname.startsWith('/cashier') ||
-    location.pathname.startsWith('/delivery');
+    location.pathname.startsWith('/delivery') ||
+    location.pathname.startsWith('/staff');
 
   if (isNoNavbarPage) {
     return <>{children}</>;
@@ -105,6 +110,16 @@ function App() {
           <Route path="/procurement" element={<Procurement />} />
           <Route path="/finance" element={<Finance />} />
           <Route path="/hr" element={<HR />} />
+
+          {/* Staff Centralized Auth & Portals */}
+          <Route path="/staff/login" element={<StaffLogin />} />
+          <Route path="/staff/register" element={<StaffRegister />} />
+          <Route path="/staff/accept-invitation" element={<AcceptInvitation />} />
+
+          {/* Admin Staff RBAC & Approvals */}
+          <Route path="/admin/staff" element={<StaffManagement />} />
+          <Route path="/admin/staff/requests" element={<StaffManagement />} />
+          <Route path="/admin/staff/activity" element={<StaffManagement />} />
 
           {/* Dedicated Staff Workstations */}
           <Route path="/waiter" element={<WaiterStation />} />

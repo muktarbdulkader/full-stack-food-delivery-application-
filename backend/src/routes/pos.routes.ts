@@ -12,7 +12,7 @@ import { authorizeRoles } from '../middlewares/rbac.middleware';
 const router = Router();
 
 router.use(authenticate);
-router.use(authorizeRoles('super_admin', 'business_owner', 'branch_manager', 'admin', 'cashier'));
+router.use(authorizeRoles('super_admin', 'business_owner', 'branch_manager', 'admin', 'cashier', 'waiter'));
 
 router.post('/sale', createPosSale);
 router.get('/sales', getPosSales);

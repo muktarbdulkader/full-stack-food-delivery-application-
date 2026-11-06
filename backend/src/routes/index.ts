@@ -15,6 +15,10 @@ import recipeRoutes from './recipe.routes';
 import procurementRoutes from './procurement.routes';
 import financeRoutes from './finance.routes';
 import hrRoutes from './hr.routes';
+import staffAuthRoutes from './staffAuth.routes';
+import staffAdminRoutes from './staffAdmin.routes';
+import cashRegisterRoutes from './cashRegister.routes';
+import deliveryDispatchRoutes from './deliveryDispatch.routes';
 
 const router = Router();
 
@@ -23,6 +27,12 @@ router.use('/foods', foodRoutes);
 router.use('/orders', orderRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
+
+// Staff Auth & Administration
+router.use('/staff', staffAuthRoutes);
+router.use('/admin/staff', staffAdminRoutes);
+router.use('/cash-register', cashRegisterRoutes);
+router.use('/delivery-dispatch', deliveryDispatchRoutes);
 
 // ERP Modules
 router.use('/tables', tableRoutes);

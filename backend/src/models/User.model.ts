@@ -20,6 +20,7 @@ export type UserRole =
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
+  employeeId?: string;
   name: string;
   email: string;
   password: string;
@@ -31,6 +32,17 @@ export interface IUser extends Document {
   address?: string;
   phone?: string;
   isActive: boolean;
+  registrationStatus?: 'pending' | 'active' | 'suspended' | 'rejected' | 'invited';
+  employmentStatus?: 'active' | 'on_leave' | 'terminated';
+  invitedBy?: mongoose.Types.ObjectId;
+  invitationToken?: string;
+  invitationTokenExpiry?: Date;
+  emailVerified?: boolean;
+  emailVerificationToken?: string;
+  passwordResetToken?: string;
+  passwordResetExpiry?: Date;
+  loginAttempts?: number;
+  lockUntil?: Date;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -107,6 +119,41 @@ const userSchema = new Schema<IUser>(
       type: String,
       trim: true,
     },
+    employeeId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    registrationStatus: {
+      type: String,
+      enum: ['pending', 'active', 'suspended', 'rejected', 'invited'],
+      default: 'active',
+      index: true,
+    },
+    employmentStatus: {
+      type: String,
+      enum: ['active', 'on_leave', 'terminated'],
+      default: 'active',
+    },
+    invitedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    invitationToken: String,
+    invitationTokenExpiry: Date,
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: String,
+    passwordResetToken: String,
+    passwordResetExpiry: Date,
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: Date,
     isActive: {
       type: Boolean,
       default: true,

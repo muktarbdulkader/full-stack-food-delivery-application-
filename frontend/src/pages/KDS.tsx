@@ -36,7 +36,7 @@ interface KDSStats {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const getToken = () => localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+const getToken = () => localStorage.getItem('staffToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
 const apiCall = async (path: string, method = 'GET', body?: object) => {
   const res = await fetch(`${API}${path}`, {

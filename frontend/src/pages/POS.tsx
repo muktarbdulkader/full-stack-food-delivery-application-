@@ -43,7 +43,7 @@ interface DayStat {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const getToken = () =>
-  localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+  localStorage.getItem('staffToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
 
 const apiCall = async (path: string, method = 'GET', body?: object) => {
   const res = await fetch(`${API}${path}`, {
