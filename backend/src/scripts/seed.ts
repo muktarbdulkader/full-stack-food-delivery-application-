@@ -120,6 +120,32 @@ const seedDatabase = async () => {
       }
     }
 
+    // Seed Tables for Bole Branch
+    for (const t of tableTemplates) {
+      const existing = await RestaurantTable.findOne({
+        branchId: boleBranch._id,
+        tableNumber: t.number,
+      });
+
+      if (!existing) {
+        const qrToken = generateSecureQRToken();
+        const qrCodeUrl = await generateTableQRCodeDataUrl(qrToken);
+
+        await RestaurantTable.create({
+          organizationId: organization._id,
+          branchId: boleBranch._id,
+          tableNumber: t.number,
+          name: `${t.name.replace('Main Hall', 'Bole Hall')}`,
+          diningArea: t.area,
+          capacity: t.cap,
+          status: 'available',
+          qrToken,
+          qrCodeUrl,
+        });
+        console.log(`✅ Table #${t.number} created with QR Code in Bole Branch`);
+      }
+    }
+
     // 4. Create Admin Users
     const existingAdminUser = await User.findOne({ email: 'admin@foodhub.com' });
     const hashedPassword = await hashPassword('admin123');

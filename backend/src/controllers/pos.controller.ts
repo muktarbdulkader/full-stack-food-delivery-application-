@@ -2,8 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { Order, IOrder } from '../models/Order.model';
 import { Food } from '../models/Food.model';
 import { RestaurantTable } from '../models/RestaurantTable.model';
+import { Branch } from '../models/Branch.model';
+import { Organization } from '../models/Organization.model';
+import { TableSession } from '../models/TableSession.model';
 import { createError } from '../middlewares/error.middleware';
 import { emitOrderToKitchen } from '../services/socket.service';
+import { generateSecureQRToken, generateTableQRCodeDataUrl } from '../services/qr.service';
 
 // ─── Helper: generate order number ───────────────────────────────────────────
 const generateOrderNumber = (): string => {
@@ -13,7 +17,7 @@ const generateOrderNumber = (): string => {
   return `${prefix}-${ts}-${rand}`;
 };
 
-// ─── CREATE POS Sale ──────────────────────────────────────────────────────────
+// ─── CREATE POS Sale / Dine-in Table Order ─────────────────────────────────────
 // POST /api/pos/sale
 export const createPosSale = async (
   req: Request,
@@ -23,7 +27,7 @@ export const createPosSale = async (
   try {
     const {
       items,                // [{ foodId, quantity, selectedPortion, selectedExtras, instructions }]
-      orderType,            // 'dine_in' | 'takeaway' | 'delivery'
+      orderType = 'dine_in',// 'dine_in' | 'takeaway' | 'delivery'
       tableNumber,          // for dine_in
       tableId,              // for dine_in
       customerId,           // optional registered customer
@@ -95,40 +99,161 @@ export const createPosSale = async (
     const discountAmount = Math.min(discount, subtotal);
     const totalAmount = parseFloat((subtotal + tax - discountAmount).toFixed(2));
 
-    // ── Validate table for dine-in ─────────────────────────────────────────
+    // ── Fault-Tolerant Table Resolution (Hotel & Restaurant Standard) ──────
     let resolvedTableId: string | undefined;
     let resolvedTableNumber: string | undefined;
+    let resolvedBranchId: string | undefined = branchId;
+    let resolvedOrgId: string | undefined = organizationId;
+    let resolvedSessionId: string | undefined;
 
     if (orderType === 'dine_in') {
-      if (!tableId && !tableNumber) {
-        throw createError('Table ID or table number is required for dine-in orders', 400);
+      const activeBranchId = branchId || (req as any).user?.branchId;
+      let table: any = null;
+
+      // 1. Direct ID lookup
+      if (tableId) {
+        table = await RestaurantTable.findById(tableId);
       }
-      const table = tableId
-        ? await RestaurantTable.findById(tableId)
-        : await RestaurantTable.findOne({ tableNumber, branchId });
 
-      if (!table) throw createError('Table not found', 404);
-      if (!table.isActive) throw createError('Table is not active', 400);
+      // 2. Flexible number lookup
+      if (!table && tableNumber) {
+        const raw = String(tableNumber).trim();
+        const unpadded = raw.replace(/^0+/, '') || raw;
+        const padded = raw.padStart(2, '0');
+        const stripped = raw.replace(/^(table|t-?)\s*/i, '').trim();
+        const strippedPadded = stripped ? stripped.padStart(2, '0') : raw;
+        const candidates = Array.from(
+          new Set([raw, unpadded, padded, stripped, strippedPadded])
+        ).filter(Boolean);
 
-      resolvedTableId = table._id.toString();
-      resolvedTableNumber = table.tableNumber;
+        // Try with branch filter
+        if (activeBranchId) {
+          table = await RestaurantTable.findOne({
+            branchId: activeBranchId,
+            tableNumber: { $in: candidates },
+          });
+        }
+
+        // Try global table registry
+        if (!table) {
+          table = await RestaurantTable.findOne({
+            tableNumber: { $in: candidates },
+          });
+        }
+
+        // Try case-insensitive matching
+        if (!table) {
+          table = await RestaurantTable.findOne({
+            tableNumber: { $regex: new RegExp(`^${raw}$`, 'i') },
+          });
+        }
+      }
+
+      // 3. Fallback Auto-Registration if not in database
+      if (!table && tableNumber) {
+        const defaultBranch = activeBranchId
+          ? await Branch.findById(activeBranchId)
+          : await Branch.findOne();
+        const defaultOrg = organizationId
+          ? await Organization.findById(organizationId)
+          : defaultBranch?.organizationId
+          ? await Organization.findById(defaultBranch.organizationId)
+          : await Organization.findOne();
+
+        if (defaultBranch && defaultOrg) {
+          const rawNum = String(tableNumber).trim();
+          const qrToken = generateSecureQRToken();
+          const qrCodeUrl = await generateTableQRCodeDataUrl(qrToken);
+
+          table = await RestaurantTable.create({
+            organizationId: defaultOrg._id,
+            branchId: defaultBranch._id,
+            tableNumber: rawNum,
+            name: `Table ${rawNum}`,
+            diningArea: 'Main Dining',
+            capacity: 4,
+            status: 'occupied',
+            qrToken,
+            qrCodeUrl,
+            isActive: true,
+          });
+        }
+      }
+
+      // 4. Update status and session
+      if (table) {
+        resolvedTableId = table._id.toString();
+        resolvedTableNumber = table.tableNumber;
+        resolvedBranchId = table.branchId?.toString() || resolvedBranchId;
+        resolvedOrgId = table.organizationId?.toString() || resolvedOrgId;
+
+        // Auto mark table as occupied
+        if (table.status !== 'occupied') {
+          table.status = 'occupied';
+          await table.save();
+        }
+
+        // Ensure active TableSession for adding multiple foods / rounds
+        let session = await TableSession.findOne({
+          tableId: table._id,
+          status: 'active',
+        });
+
+        if (!session) {
+          session = await TableSession.create({
+            organizationId: table.organizationId,
+            branchId: table.branchId,
+            tableId: table._id,
+            tableNumber: table.tableNumber,
+            guestCount: 2,
+            status: 'active',
+            openedAt: new Date(),
+            openedBy: (req as any).user?._id,
+            orders: [],
+            subtotal: 0,
+            tax: 0,
+            serviceCharge: 0,
+            discount: 0,
+            totalAmount: 0,
+            paidAmount: 0,
+            balanceDue: 0,
+            paymentStatus: 'unpaid',
+          });
+
+          table.currentSessionId = session._id;
+          await table.save();
+        }
+
+        resolvedSessionId = session._id.toString();
+      } else {
+        // Fallback: still accept order so guest receives food
+        resolvedTableNumber = String(tableNumber || '01').trim();
+      }
+    }
+
+    // Fallback branch and org if takeaway or unassigned
+    if (!resolvedBranchId) {
+      const fbBranch = await Branch.findOne();
+      resolvedBranchId = fbBranch?._id?.toString();
+      resolvedOrgId = fbBranch?.organizationId?.toString() || resolvedOrgId;
     }
 
     // ── Create Order ───────────────────────────────────────────────────────
     const order = await Order.create({
       orderNumber: generateOrderNumber(),
-      orderType: orderType || 'takeaway',
-      organizationId,
-      branchId,
+      orderType: orderType || 'dine_in',
+      organizationId: resolvedOrgId,
+      branchId: resolvedBranchId,
       user: customerId,
       tableId: resolvedTableId,
       tableNumber: resolvedTableNumber,
+      tableSessionId: resolvedSessionId,
       items: resolvedItems,
       subtotal,
       tax,
       discount: discountAmount,
       totalAmount,
-      status: 'confirmed', // POS orders go straight to confirmed
+      status: 'confirmed', // POS / Waiter orders go straight to confirmed
       payment: {
         method: paymentMethod,
         status: paymentMethod === 'cash' ? 'paid' : 'pending',
@@ -136,14 +261,36 @@ export const createPosSale = async (
         confirmedBy: (req as any).user?._id,
       },
       phone: customerPhone || '',
-      notes: notes || `POS Sale — ${customerName || 'Walk-in'}`,
+      notes: notes || `Order for Table ${resolvedTableNumber || 'Walk-in'}`,
       deliveryAddress: deliveryAddress || '',
       statusHistory: [{ status: 'confirmed', timestamp: new Date() }],
     });
 
-    // ── Broadcast to kitchen ───────────────────────────────────────────────
-    if (branchId) {
-      emitOrderToKitchen(branchId, {
+    // ── Append Order to Active Table Session ───────────────────────────────
+    if (resolvedSessionId) {
+      const session = await TableSession.findById(resolvedSessionId);
+      if (session) {
+        session.orders.push(order._id);
+        session.subtotal = parseFloat((session.subtotal + subtotal).toFixed(2));
+        session.tax = parseFloat((session.tax + tax).toFixed(2));
+        session.discount = parseFloat((session.discount + discountAmount).toFixed(2));
+        session.totalAmount = parseFloat((session.totalAmount + totalAmount).toFixed(2));
+        session.balanceDue = parseFloat(
+          (paymentMethod === 'cash' ? session.balanceDue : session.balanceDue + totalAmount).toFixed(2)
+        );
+        if (paymentMethod === 'cash') {
+          session.paidAmount = parseFloat((session.paidAmount + totalAmount).toFixed(2));
+          if (session.balanceDue <= 0) {
+            session.paymentStatus = 'paid';
+          }
+        }
+        await session.save();
+      }
+    }
+
+    // ── Broadcast to Kitchen Display System (KDS) ──────────────────────────
+    if (resolvedBranchId) {
+      emitOrderToKitchen(resolvedBranchId, {
         orderId: order._id,
         orderNumber: order.orderNumber,
         orderType: order.orderType,
@@ -155,13 +302,17 @@ export const createPosSale = async (
     }
 
     const populated = await Order.findById(order._id)
-      .populate('items.food', 'name image')
+      .populate('items.food', 'name image price category')
       .lean();
 
     res.status(201).json({
       status: 'success',
-      message: 'Sale created successfully',
-      data: { order: populated },
+      message: `Order for Table ${resolvedTableNumber || 'POS'} placed successfully`,
+      data: {
+        order: populated,
+        orderNumber: order.orderNumber,
+        tableNumber: resolvedTableNumber,
+      },
     });
   } catch (error) {
     next(error);

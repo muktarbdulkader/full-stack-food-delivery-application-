@@ -1,17 +1,37 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
-const transporter = nodemailer.createTransport({
-  host: env.smtpHost,
-  port: env.smtpPort,
-  secure: false,
-  auth: {
-    user: env.smtpUser,
-    pass: env.smtpPass,
-  },
-});
+const isPlaceholderConfig =
+  !env.smtpUser ||
+  !env.smtpPass ||
+  env.smtpUser.includes('your-email') ||
+  env.smtpUser.includes('example.com') ||
+  env.smtpPass === 'your-app-password';
+
+let transporter: nodemailer.Transporter | null = null;
+
+if (!isPlaceholderConfig) {
+  try {
+    transporter = nodemailer.createTransport({
+      host: env.smtpHost,
+      port: env.smtpPort,
+      secure: false,
+      auth: {
+        user: env.smtpUser,
+        pass: env.smtpPass,
+      },
+    });
+  } catch (err) {
+    console.warn('⚠️ SMTP Transport initialization skipped:', (err as Error).message);
+  }
+}
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
+  if (isPlaceholderConfig || !transporter) {
+    console.log(`📨 [Email Simulated] To: ${to} | Subject: "${subject}"`);
+    return;
+  }
+
   try {
     await transporter.sendMail({
       from: `"FoodHub" <${env.smtpUser}>`,
@@ -19,9 +39,9 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
       subject,
       html,
     });
-    console.log(`Email sent to ${to}`);
-  } catch (error) {
-    console.error('Email error:', error);
+    console.log(`✅ Email sent to ${to}`);
+  } catch (error: any) {
+    console.warn(`⚠️ Email delivery notice (SMTP authentication/network): ${error?.message || error}`);
   }
 };
 

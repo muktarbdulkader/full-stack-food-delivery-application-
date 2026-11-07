@@ -40,6 +40,7 @@ interface TableItem {
   area: string;
   capacity: number;
   status: 'available' | 'occupied' | 'reserved' | 'cleaning' | 'out_of_service';
+  branchId?: string | { _id: string; name?: string };
 }
 
 interface KitchenReadyOrder {
@@ -153,9 +154,15 @@ const WaiterStation = () => {
     setSelectedTableForBill(table);
     setBillLoading(true);
     try {
-      // Find orders for this table
-      const res = await apiReq(`/orders/all?status=pending`);
-      setBillDetails(res.data?.orders?.filter((o: any) => o.tableNumber === table.tableNumber) || []);
+      // Find orders for this table across all active kitchen orders
+      const res = await apiReq('/kds/orders');
+      const allOrders = res.data?.orders || [];
+      const tableOrders = allOrders.filter(
+        (o: any) =>
+          o.tableNumber === table.tableNumber ||
+          (o.tableId && o.tableId === table._id)
+      );
+      setBillDetails(tableOrders);
     } catch {
       setBillDetails([]);
     } finally {
@@ -212,9 +219,14 @@ const WaiterStation = () => {
 
     setOrderSubmitting(true);
     try {
+      const targetTable = tables.find((t) => t.tableNumber === orderTableNumber);
+      const branchVal = targetTable?.branchId;
+      const resolvedBranch = typeof branchVal === 'object' && branchVal !== null ? (branchVal as any)._id : branchVal;
       const payload = {
         orderType: 'dine_in',
+        tableId: targetTable?._id,
         tableNumber: orderTableNumber,
+        branchId: resolvedBranch || (targetTable as any)?.branch?._id,
         items: orderCart.map((i) => ({
           foodId: i.food._id,
           quantity: i.quantity,
@@ -628,9 +640,14 @@ const WaiterStation = () => {
                       setOrderTableNumber(table.tableNumber);
                       setShowOrderModal(true);
                     }}
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-2 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1.5"
+                    className={`w-full font-black py-2 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1.5 ${
+                      isOccupied
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white shadow-blue-900/30'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950'
+                    }`}
                   >
-                    <span>🍽️</span> Take Order / Add Food
+                    <span>{isOccupied ? '➕' : '🍽️'}</span>
+                    <span>{isOccupied ? 'Add More Food (+)' : 'Take Order / Open Tab'}</span>
                   </button>
 
                   {/* Waiter Action 2: View Dining Tab / Bill */}
@@ -766,10 +783,17 @@ const WaiterStation = () => {
               <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
                 <div>
                   <h3 className="text-xl font-black text-white flex items-center gap-2">
-                    <span>🍽️</span> Take Order &amp; Fire to Kitchen
+                    <span>{tables.find((t) => t.tableNumber === orderTableNumber)?.status === 'occupied' ? '➕' : '🍽️'}</span>
+                    <span>
+                      {tables.find((t) => t.tableNumber === orderTableNumber)?.status === 'occupied'
+                        ? `Add More Food (Table #${orderTableNumber})`
+                        : `Take Order & Fire to Kitchen`}
+                    </span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Select customer dishes and submit directly to Kitchen Display System (KDS)
+                    {tables.find((t) => t.tableNumber === orderTableNumber)?.status === 'occupied'
+                      ? 'Appends extra dishes directly to this active table session and sends ticket to Kitchen (KDS)'
+                      : 'Select customer dishes and fire new dining order directly to Kitchen Display System (KDS)'}
                   </p>
                 </div>
 
