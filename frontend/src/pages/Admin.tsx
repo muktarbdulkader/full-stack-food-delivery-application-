@@ -8,6 +8,16 @@ import { adminService } from '../services/admin.service';
 import { authService } from '../services/auth.service';
 import type { Food, Order } from '../services/food.service';
 import StaffManagement from './admin/StaffManagement';
+import CashierStation from './CashierStation';
+import WaiterStation from './WaiterStation';
+import KDS from './KDS';
+import DeliveryStation from './DeliveryStation';
+import POS from './POS';
+import Inventory from './Inventory';
+import Recipes from './Recipes';
+import Procurement from './Procurement';
+import Finance from './Finance';
+import HR from './HR';
 
 export type AdminTab =
   | 'dashboard'
@@ -18,7 +28,17 @@ export type AdminTab =
   | 'staff'
   | 'payments'
   | 'analytics'
-  | 'settings';
+  | 'settings'
+  | 'cashier'
+  | 'waiter'
+  | 'kds'
+  | 'delivery'
+  | 'pos'
+  | 'inventory'
+  | 'recipes'
+  | 'procurement'
+  | 'finance'
+  | 'hr';
 
 const Admin = () => {
   const { isAdminAuthenticated, admin } = useSelector((state: RootState) => state.auth);
@@ -148,7 +168,7 @@ const Admin = () => {
   const preparingOrders = orders.filter(o => o.status === 'preparing').length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
 
-  const menuItems = [
+  const menuItems: { id: AdminTab; icon: string; label: string }[] = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'orders', icon: '📦', label: 'Orders' },
     { id: 'foods', icon: '🍽️', label: 'Menu Management' },
@@ -159,6 +179,47 @@ const Admin = () => {
     { id: 'analytics', icon: '📈', label: 'Analytics' },
     { id: 'settings', icon: '⚙️', label: 'Settings' },
   ];
+
+  const staffHubItems: { id: AdminTab; icon: string; label: string; path: string }[] = [
+    { id: 'cashier', icon: '💵', label: 'Cashier Desk', path: '/cashier' },
+    { id: 'waiter', icon: '🛎️', label: 'Waiter Station', path: '/waiter' },
+    { id: 'kds', icon: '🍳', label: 'Kitchen Display (KDS)', path: '/kds' },
+    { id: 'delivery', icon: '🛵', label: 'Driver & Dispatch', path: '/delivery' },
+  ];
+
+  const erpSystemItems: { id: AdminTab; icon: string; label: string; path: string }[] = [
+    { id: 'pos', icon: '🏪', label: 'Point of Sale (POS)', path: '/pos' },
+    { id: 'inventory', icon: '📦', label: 'Inventory & Stock', path: '/inventory' },
+    { id: 'recipes', icon: '🍲', label: 'Recipe Food Costing', path: '/recipes' },
+    { id: 'procurement', icon: '🚛', label: 'Procurement & POs', path: '/procurement' },
+    { id: 'finance', icon: '📊', label: 'General Ledger & P&L', path: '/finance' },
+    { id: 'hr', icon: '👥', label: 'HR & Staff Payroll', path: '/hr' },
+  ];
+
+  const getTabTitle = (t: AdminTab): string => {
+    switch (t) {
+      case 'dashboard': return 'Executive Dashboard';
+      case 'orders': return 'Live Orders & Dispatch';
+      case 'foods': return 'Menu Management & Pricing';
+      case 'tables': return 'Dining Tables & QR Codes';
+      case 'waiters': return 'Waiter Service Calls';
+      case 'staff': return 'Staff RBAC & Approvals';
+      case 'payments': return 'Payments & Revenue';
+      case 'analytics': return 'Business Analytics & Reports';
+      case 'settings': return 'Restaurant & Branch Settings';
+      case 'cashier': return 'Cashier Desk & Shift Ledger';
+      case 'waiter': return 'Waiter Service Station';
+      case 'kds': return 'Kitchen Display System (KDS)';
+      case 'delivery': return 'Delivery & Courier Dispatch';
+      case 'pos': return 'Point of Sale (POS) Register';
+      case 'inventory': return 'Inventory & Stock Control';
+      case 'recipes': return 'Recipe Food Costing & BOM';
+      case 'procurement': return 'Procurement & Purchase Orders';
+      case 'finance': return 'General Ledger & Chart of Accounts';
+      case 'hr': return 'HR & Staff Payroll Management';
+      default: return 'Administration';
+    }
+  };
 
   // Show Auth Screen
   if (showAuth || !isAdmin) {
@@ -343,48 +404,66 @@ const Admin = () => {
 
             <div className="pt-4 mt-2 border-t border-slate-700/50">
               <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Dedicated Staff Hubs</p>
-              <Link to="/cashier" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">💵</span>
-                <span className="font-medium text-sm">Cashier Desk</span>
-              </Link>
-              <Link to="/waiter" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🛎️</span>
-                <span className="font-medium text-sm">Waiter Station</span>
-              </Link>
-              <Link to="/kds" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🍳</span>
-                <span className="font-medium text-sm">Kitchen Display (KDS)</span>
-              </Link>
-              <Link to="/delivery" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🛵</span>
-                <span className="font-medium text-sm">Driver &amp; Dispatch</span>
-              </Link>
+              {staffHubItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-1 group">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left ${
+                      tab === item.id
+                        ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/5 font-semibold'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="font-medium text-sm truncate">{item.label}</span>
+                  </button>
+                  <Link
+                    to={item.path}
+                    target="_blank"
+                    title={`Open ${item.label} in standalone window`}
+                    className="p-2 text-slate-500 hover:text-white hover:bg-slate-800/80 rounded-xl transition opacity-0 group-hover:opacity-100"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </Link>
+                </div>
+              ))}
 
               <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider px-4 mt-4 mb-2">ERP Systems</p>
-              <Link to="/pos" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🏪</span>
-                <span className="font-medium text-sm">Point of Sale (POS)</span>
-              </Link>
-              <Link to="/inventory" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">📦</span>
-                <span className="font-medium text-sm">Inventory &amp; Stock</span>
-              </Link>
-              <Link to="/recipes" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🍲</span>
-                <span className="font-medium text-sm">Recipe Food Costing</span>
-              </Link>
-              <Link to="/procurement" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">🚛</span>
-                <span className="font-medium text-sm">Procurement &amp; POs</span>
-              </Link>
-              <Link to="/finance" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">📊</span>
-                <span className="font-medium text-sm">General Ledger &amp; P&amp;L</span>
-              </Link>
-              <Link to="/hr" className="w-full flex items-center gap-3 px-4 py-2 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition">
-                <span className="text-lg">👥</span>
-                <span className="font-medium text-sm">HR &amp; Staff Payroll</span>
-              </Link>
+              {erpSystemItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-1 group">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left ${
+                      tab === item.id
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/5 font-semibold'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="font-medium text-sm truncate">{item.label}</span>
+                  </button>
+                  <Link
+                    to={item.path}
+                    target="_blank"
+                    title={`Open ${item.label} in standalone window`}
+                    className="p-2 text-slate-500 hover:text-white hover:bg-slate-800/80 rounded-xl transition opacity-0 group-hover:opacity-100"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </Link>
+                </div>
+              ))}
             </div>
           </nav>
 
@@ -409,12 +488,8 @@ const Admin = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div>
-                <h2 className="text-xl font-bold text-white capitalize">
-                  {tab === 'foods'
-                    ? 'Menu Management'
-                    : tab === 'staff'
-                    ? 'Staff Access & Approvals'
-                    : tab}
+                <h2 className="text-xl font-bold text-white">
+                  {getTabTitle(tab)}
                 </h2>
                 <div className="flex items-center space-x-2 text-xs text-slate-400 mt-0.5">
                   <span>FoodHub ERP Enterprise</span>
@@ -460,71 +535,136 @@ const Admin = () => {
                 </button>
 
                 {showWorkstationMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 text-xs">
+                  <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 text-xs">
                     <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
                       Open Operational Workspace
                     </p>
-                    <Link
-                      to="/cashier"
-                      target="_blank"
-                      onClick={() => setShowWorkstationMenu(false)}
-                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('cashier');
+                        setShowWorkstationMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition text-left"
                     >
-                      <span className="text-base">💰</span>
-                      <div>
-                        <p className="font-semibold text-white">Cashier Desk</p>
-                        <p className="text-[10px] text-slate-400">/cashier</p>
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-base">💰</span>
+                        <div>
+                          <p className="font-semibold text-white">Cashier Desk</p>
+                          <p className="text-[10px] text-slate-400">Ledger &amp; Settlements</p>
+                        </div>
                       </div>
-                    </Link>
-                    <Link
-                      to="/waiter"
-                      target="_blank"
-                      onClick={() => setShowWorkstationMenu(false)}
-                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                      <Link
+                        to="/cashier"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Open in new window"
+                        className="text-slate-500 hover:text-white p-1"
+                      >
+                        ↗
+                      </Link>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('waiter');
+                        setShowWorkstationMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition text-left"
                     >
-                      <span className="text-base">🛎️</span>
-                      <div>
-                        <p className="font-semibold text-white">Waiter Station</p>
-                        <p className="text-[10px] text-slate-400">/waiter</p>
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-base">🛎️</span>
+                        <div>
+                          <p className="font-semibold text-white">Waiter Station</p>
+                          <p className="text-[10px] text-slate-400">Table Orders &amp; Buzzers</p>
+                        </div>
                       </div>
-                    </Link>
-                    <Link
-                      to="/kds"
-                      target="_blank"
-                      onClick={() => setShowWorkstationMenu(false)}
-                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                      <Link
+                        to="/waiter"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Open in new window"
+                        className="text-slate-500 hover:text-white p-1"
+                      >
+                        ↗
+                      </Link>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('kds');
+                        setShowWorkstationMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition text-left"
                     >
-                      <span className="text-base">🍳</span>
-                      <div>
-                        <p className="font-semibold text-white">Kitchen KDS</p>
-                        <p className="text-[10px] text-slate-400">/kds</p>
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-base">🍳</span>
+                        <div>
+                          <p className="font-semibold text-white">Kitchen KDS</p>
+                          <p className="text-[10px] text-slate-400">Chef Ticket Preparation</p>
+                        </div>
                       </div>
-                    </Link>
-                    <Link
-                      to="/delivery"
-                      target="_blank"
-                      onClick={() => setShowWorkstationMenu(false)}
-                      className="flex items-center space-x-2.5 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                      <Link
+                        to="/kds"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Open in new window"
+                        className="text-slate-500 hover:text-white p-1"
+                      >
+                        ↗
+                      </Link>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('delivery');
+                        setShowWorkstationMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition text-left"
                     >
-                      <span className="text-base">🛵</span>
-                      <div>
-                        <p className="font-semibold text-white">Driver Dispatch</p>
-                        <p className="text-[10px] text-slate-400">/delivery</p>
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-base">🛵</span>
+                        <div>
+                          <p className="font-semibold text-white">Driver Dispatch</p>
+                          <p className="text-[10px] text-slate-400">Order Routing &amp; Courier</p>
+                        </div>
                       </div>
-                    </Link>
+                      <Link
+                        to="/delivery"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Open in new window"
+                        className="text-slate-500 hover:text-white p-1"
+                      >
+                        ↗
+                      </Link>
+                    </button>
                     <div className="my-1 border-t border-slate-800" />
-                    <Link
-                      to="/pos"
-                      target="_blank"
-                      onClick={() => setShowWorkstationMenu(false)}
-                      className="flex items-center space-x-2.5 px-3 py-2 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('pos');
+                        setShowWorkstationMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition text-left"
                     >
-                      <span className="text-base">🏪</span>
-                      <div>
-                        <p className="font-semibold">POS Register (Full)</p>
-                        <p className="text-[10px] text-slate-400">/pos</p>
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-base">🏪</span>
+                        <div>
+                          <p className="font-semibold">POS Register (Full)</p>
+                          <p className="text-[10px] text-slate-400">Point of Sale Workspace</p>
+                        </div>
                       </div>
-                    </Link>
+                      <Link
+                        to="/pos"
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Open in new window"
+                        className="text-slate-500 hover:text-white p-1"
+                      >
+                        ↗
+                      </Link>
+                    </button>
                   </div>
                 )}
               </div>
@@ -607,6 +747,20 @@ const Admin = () => {
             <AnalyticsTab orders={orders} foods={foods} totalRevenue={totalRevenue} />
           )}
           {tab === 'settings' && <SettingsTab />}
+
+          {/* Operational Workstations embedded with full Admin shell */}
+          {tab === 'cashier' && <CashierStation />}
+          {tab === 'waiter' && <WaiterStation />}
+          {tab === 'kds' && <KDS />}
+          {tab === 'delivery' && <DeliveryStation />}
+
+          {/* ERP Core Modules embedded with full Admin shell */}
+          {tab === 'pos' && <POS />}
+          {tab === 'inventory' && <Inventory />}
+          {tab === 'recipes' && <Recipes />}
+          {tab === 'procurement' && <Procurement />}
+          {tab === 'finance' && <Finance />}
+          {tab === 'hr' && <HR />}
         </main>
       </div>
 

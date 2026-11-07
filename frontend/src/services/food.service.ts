@@ -49,13 +49,16 @@ export interface CreateOrderData {
 
 export interface Order {
   _id: string;
+  orderNumber?: string;
+  orderType?: 'delivery' | 'dine_in' | 'takeaway';
+  tableNumber?: string;
   items: { food: Food; quantity: number; price: number }[];
   totalAmount: number;
   status: string;
-  deliveryAddress: string;
-  location: Location;
-  payment: Payment;
-  phone: string;
+  deliveryAddress?: string;
+  location?: Location;
+  payment?: Payment;
+  phone?: string;
   notes?: string;
   estimatedDelivery?: string;
   tracking?: Tracking;

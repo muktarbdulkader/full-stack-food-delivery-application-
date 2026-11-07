@@ -12,11 +12,6 @@ import AdminLogin from './pages/AdminLogin';
 import DineInMenu from './pages/DineInMenu';
 import KDS from './pages/KDS';
 import POS from './pages/POS';
-import Inventory from './pages/Inventory';
-import Recipes from './pages/Recipes';
-import Procurement from './pages/Procurement';
-import Finance from './pages/Finance';
-import HR from './pages/HR';
 import WaiterStation from './pages/WaiterStation';
 import CashierStation from './pages/CashierStation';
 import DeliveryStation from './pages/DeliveryStation';
@@ -104,11 +99,11 @@ function App() {
           <Route path="/pos" element={<POS />} />
 
           {/* ERP Core Modules */}
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/recipes" element={<Recipes />} />
-          <Route path="/procurement" element={<Procurement />} />
-          <Route path="/finance" element={<Finance />} />
-          <Route path="/hr" element={<HR />} />
+          <Route path="/inventory" element={<Navigate to="/admin?tab=inventory" replace />} />
+          <Route path="/recipes" element={<Navigate to="/admin?tab=recipes" replace />} />
+          <Route path="/procurement" element={<Navigate to="/admin?tab=procurement" replace />} />
+          <Route path="/finance" element={<Navigate to="/admin?tab=finance" replace />} />
+          <Route path="/hr" element={<Navigate to="/admin?tab=hr" replace />} />
 
           {/* Staff Centralized Auth & Portals */}
           <Route path="/staff/login" element={<StaffLogin />} />
