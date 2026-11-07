@@ -8,6 +8,7 @@ import { adminService } from '../services/admin.service';
 import { authService } from '../services/auth.service';
 import type { Food, Order } from '../services/food.service';
 import StaffManagement from './admin/StaffManagement';
+import AnalyticsDashboard from './admin/AnalyticsDashboard';
 import CashierStation from './CashierStation';
 import WaiterStation from './WaiterStation';
 import KDS from './KDS';
@@ -1363,92 +1364,9 @@ const PaymentsTab = ({ orders, totalRevenue, paidOrders }: { orders: Order[]; to
 
 
 // Analytics Tab
-const AnalyticsTab = ({ orders, foods, totalRevenue }: { orders: Order[]; foods: Food[]; totalRevenue: number }) => {
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    const dayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === date.toDateString());
-    return { day: date.toLocaleDateString('en-US', { weekday: 'short' }), orders: dayOrders.length, revenue: dayOrders.reduce((sum, o) => sum + o.totalAmount, 0) };
-  });
-
-  const categoryStats = foods.reduce((acc, food) => {
-    acc[food.category] = (acc[food.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const maxOrders = Math.max(...last7Days.map(d => d.orders), 1);
-
-  return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon="📈" label="Avg Order Value" value={orders.length ? `${(totalRevenue / orders.length).toFixed(0)}` : '0'} sub="ETB" trend="Per order" color="amber" />
-        <StatCard icon="🔄" label="Order Rate" value={`${(orders.length / 30).toFixed(1)}`} sub="/day" trend="Last 30 days" color="blue" />
-        <StatCard icon="⭐" label="Menu Items" value={foods.length.toString()} sub="items" trend={`${Object.keys(categoryStats).length} categories`} color="violet" />
-        <StatCard icon="📊" label="Completion Rate" value={orders.length ? `${((orders.filter(o => o.status === 'delivered').length / orders.length) * 100).toFixed(0)}%` : '0%'} sub="delivered" trend="Success rate" color="emerald" />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Orders Chart */}
-        <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-5 lg:p-6 border border-slate-700/50">
-          <h3 className="text-lg font-bold text-white mb-6">📊 Orders This Week</h3>
-          <div className="flex items-end justify-between gap-2 h-48">
-            {last7Days.map((day, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full bg-slate-700/50 rounded-t-lg relative" style={{ height: '160px' }}>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-500 to-orange-400 rounded-t-lg transition-all duration-500" style={{ height: `${(day.orders / maxOrders) * 100}%`, minHeight: day.orders > 0 ? '8px' : '0' }} />
-                </div>
-                <span className="text-slate-400 text-xs">{day.day}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-400 rounded" />
-              <span className="text-slate-400">Orders</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Distribution */}
-        <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-5 lg:p-6 border border-slate-700/50">
-          <h3 className="text-lg font-bold text-white mb-6">🍽️ Menu Categories</h3>
-          <div className="space-y-4">
-            {Object.entries(categoryStats).map(([category, count]) => {
-              const percentage = (count / foods.length) * 100;
-              return (
-                <div key={category}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-300">{category}</span>
-                    <span className="text-slate-400">{count} items ({percentage.toFixed(0)}%)</span>
-                  </div>
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Revenue by Day */}
-      <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-5 lg:p-6 border border-slate-700/50">
-        <h3 className="text-lg font-bold text-white mb-6">💰 Revenue This Week</h3>
-        <div className="grid grid-cols-7 gap-3">
-          {last7Days.map((day, i) => (
-            <div key={i} className="text-center p-3 bg-slate-700/30 rounded-xl">
-              <p className="text-slate-400 text-xs mb-1">{day.day}</p>
-              <p className="text-amber-400 font-bold text-sm lg:text-base">{day.revenue.toFixed(0)}</p>
-              <p className="text-slate-500 text-xs">ETB</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+const AnalyticsTab = ({ orders, foods, totalRevenue }: { orders: Order[]; foods: Food[]; totalRevenue: number }) => (
+  <AnalyticsDashboard orders={orders} foods={foods} totalRevenue={totalRevenue} />
+);
 
 // Settings Tab
 const SettingsTab = () => (
