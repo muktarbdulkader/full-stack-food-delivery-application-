@@ -238,6 +238,21 @@ const Admin = () => {
 
           {/* Auth Card */}
           <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-slate-700/50 shadow-2xl">
+            {/* Workstation Switcher Header Tabs */}
+            <div className="flex items-center p-1 bg-slate-900/80 border border-slate-700/60 rounded-xl mb-6">
+              <div className="flex-1 py-2 text-center text-xs font-bold text-amber-400 bg-slate-800 rounded-lg shadow-sm flex items-center justify-center gap-1.5">
+                <span>🏨</span>
+                <span>Admin Master</span>
+              </div>
+              <Link
+                to="/staff/login"
+                className="flex-1 py-2 text-center text-xs font-semibold text-slate-400 hover:text-emerald-400 transition flex items-center justify-center gap-1.5"
+              >
+                <span>👥</span>
+                <span>Staff Workstations</span>
+              </Link>
+            </div>
+
             <h2 className="text-2xl font-bold text-white text-center mb-6">
               {isLogin ? 'Admin Login' : 'Admin Registration'}
             </h2>
@@ -295,6 +310,29 @@ const Admin = () => {
                   {isLogin ? 'Register' : 'Login'}
                 </button>
               </p>
+            </div>
+
+            {/* Staff Workstations Callout Banner with Icon */}
+            <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/20">
+                  👥
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>Operational Staff Workstations</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-bold uppercase">Active</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400">Cashier • Waiter • Kitchen KDS • Delivery</p>
+                </div>
+              </div>
+              <Link
+                to="/staff/login"
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold rounded-xl shadow transition flex items-center gap-1"
+              >
+                <span>Staff Login</span>
+                <span>→</span>
+              </Link>
             </div>
 
             <div className="mt-6 pt-6 border-t border-slate-700/50">

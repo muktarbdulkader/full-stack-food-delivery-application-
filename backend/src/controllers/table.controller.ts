@@ -17,6 +17,11 @@ export const getAllTables = async (
     const { branchId, area, status } = req.query;
     const filter: Record<string, any> = { isActive: true };
 
+    // Strict multi-tenant isolation
+    if (req.user?.role !== 'super_admin' && req.user?.organizationId) {
+      filter.organizationId = req.user.organizationId;
+    }
+
     if (branchId) filter.branchId = branchId;
     if (area) filter.diningArea = area;
     if (status) filter.status = status;
@@ -81,6 +86,14 @@ export const createTable = async (
     const branch = await Branch.findById(branchId);
     if (!branch) {
       throw createError('Branch not found', 404);
+    }
+
+    if (
+      req.user?.role !== 'super_admin' &&
+      req.user?.organizationId &&
+      branch.organizationId.toString() !== req.user.organizationId.toString()
+    ) {
+      throw createError('Access denied: branch belongs to another organization', 403);
     }
 
     const existingTable = await RestaurantTable.findOne({

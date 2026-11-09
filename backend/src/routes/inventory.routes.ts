@@ -13,11 +13,13 @@ import {
 } from '../controllers/inventory.controller';
 import { protect as authenticate } from '../middlewares/auth.middleware';
 import { authorizeRoles } from '../middlewares/rbac.middleware';
+import { enforceTenantIsolation } from '../middlewares/tenant.middleware';
 
 const router = Router();
 
 router.use(authenticate);
 router.use(authorizeRoles('super_admin', 'business_owner', 'branch_manager', 'admin', 'inventory_manager', 'chef'));
+router.use(enforceTenantIsolation);
 
 router.get('/ingredients', getIngredients);
 router.get('/stats', getInventoryStats);

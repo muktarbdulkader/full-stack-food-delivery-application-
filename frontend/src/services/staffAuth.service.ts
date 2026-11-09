@@ -1,6 +1,35 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 
 export const staffAuthService = {
+  async registerRestaurant(body: {
+    ownerName: string;
+    email: string;
+    password: string;
+    restaurantName: string;
+    phone: string;
+    businessType?: string;
+    city?: string;
+    country?: string;
+    street?: string;
+    currency?: string;
+  }) {
+    const res = await fetch(`${API_URL}/staff/register-restaurant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Restaurant registration failed');
+    return data;
+  },
+
+  async getOrganizations() {
+    const res = await fetch(`${API_URL}/staff/organizations`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch restaurants');
+    return data.organizations || [];
+  },
+
   async login(email: string, password: string) {
     const res = await fetch(`${API_URL}/staff/login`, {
       method: 'POST',

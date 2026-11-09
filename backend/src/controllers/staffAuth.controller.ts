@@ -5,13 +5,19 @@ import { StaffInvitation } from '../models/StaffInvitation.model';
 import { StaffRegistrationRequest } from '../models/StaffRegistrationRequest.model';
 import { StaffSession } from '../models/StaffSession.model';
 import { AuditLog } from '../models/AuditLog.model';
+import { Organization } from '../models/Organization.model';
+import { Branch } from '../models/Branch.model';
+import { RestaurantTable } from '../models/RestaurantTable.model';
+import { Account } from '../models/Account.model';
 import { hashPassword, comparePassword } from '../utils/hash';
 import { generateToken } from '../utils/jwt';
 import { createError } from '../middlewares/error.middleware';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { generateSecureQRToken, generateTableQRCodeDataUrl } from '../services/qr.service';
 
 // Allowed staff roles
 const STAFF_ROLES: UserRole[] = [
+  'business_owner',
   'cashier',
   'waiter',
   'chef',
@@ -40,6 +46,7 @@ export const getPortalForRole = (role: string): string => {
     case 'driver':
     case 'delivery_manager':
       return '/delivery';
+    case 'business_owner':
     case 'admin':
     case 'super_admin':
     case 'restaurant_admin':
@@ -214,6 +221,267 @@ export const submitRegistrationRequest = async (
       success: true,
       message: 'Registration request submitted successfully. It will be reviewed by an administrator.',
       requestId: request._id,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Register New Restaurant Organization (Owner Registration)
+ * Creates new Organization, primary Branch, Owner User, default Tables & Chart of Accounts
+ */
+export const registerRestaurantOwner = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const {
+      ownerName,
+      email,
+      password,
+      restaurantName,
+      phone,
+      businessType = 'restaurant',
+      city = 'Addis Ababa',
+      country = 'Ethiopia',
+      street,
+      currency = 'ETB',
+    } = req.body;
+
+    if (!ownerName || !email || !password || !restaurantName) {
+      throw createError('Owner name, email, password, and restaurant name are required', 400);
+    }
+
+    if (password.length < 6) {
+      throw createError('Password must be at least 6 characters', 400);
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      throw createError('An account with this email already exists', 400);
+    }
+
+    // Generate unique slug
+    let baseSlug = restaurantName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    if (!baseSlug) baseSlug = 'restaurant';
+    let slug = baseSlug;
+    let count = 1;
+    while (await Organization.findOne({ slug })) {
+      slug = `${baseSlug}-${count++}`;
+    }
+
+    // 1. Create Organization
+    const organization = await Organization.create({
+      name: restaurantName.trim(),
+      slug,
+      businessType,
+      contactEmail: cleanEmail,
+      contactPhone: phone || '+251 911 000 000',
+      address: {
+        street: street || 'Central District',
+        city: city || 'Addis Ababa',
+        country: country || 'Ethiopia',
+      },
+      settings: {
+        taxRate: 0.15,
+        serviceChargeRate: 0.05,
+        currency: currency || 'ETB',
+        allowGuestOrdering: true,
+        autoAcceptOrders: true,
+        kdsEnabled: true,
+      },
+      isActive: true,
+    });
+
+    // 2. Create Default Primary Branch
+    const branchCode = `${baseSlug.substring(0, 3).toUpperCase()}-01`;
+    const branch = await Branch.create({
+      organizationId: organization._id,
+      name: 'Main Branch',
+      code: branchCode,
+      phone: phone || '+251 911 000 000',
+      email: cleanEmail,
+      address: {
+        street: street || 'Main Boulevard',
+        city: city || 'Addis Ababa',
+        country: country || 'Ethiopia',
+      },
+      operatingHours: {
+        openTime: '07:00',
+        closeTime: '23:00',
+        daysOpen: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      },
+      diningAreas: ['Main Dining Hall', 'Outdoor Patio', 'VIP Lounge'],
+      isMainBranch: true,
+      isActive: true,
+    });
+
+    // 3. Create Owner User
+    const hashedPassword = await hashPassword(password);
+    const ownerUser = await User.create({
+      name: ownerName.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      role: 'business_owner',
+      organizationId: organization._id,
+      branchId: branch._id,
+      assignedBranches: [branch._id],
+      permissions: ['all'],
+      phone: phone || '',
+      registrationStatus: 'active',
+      employmentStatus: 'active',
+      isActive: true,
+      emailVerified: true,
+    });
+
+    // Update branch manager
+    branch.managerId = ownerUser._id;
+    await branch.save();
+
+    // 4. Create Initial Dine-in Tables (Tables 01-05) with QR codes
+    const tableConfigs = [
+      { number: '01', name: 'Table 01 - Main Hall', area: 'Main Dining Hall', cap: 4 },
+      { number: '02', name: 'Table 02 - Intimate Booth', area: 'Main Dining Hall', cap: 2 },
+      { number: '03', name: 'Table 03 - Window View', area: 'Main Dining Hall', cap: 4 },
+      { number: '04', name: 'Table 04 - Garden Patio', area: 'Outdoor Patio', cap: 6 },
+      { number: '05', name: 'Table 05 - Presidential Suite', area: 'VIP Lounge', cap: 8 },
+    ];
+
+    for (const t of tableConfigs) {
+      const qrToken = generateSecureQRToken();
+      const qrCodeUrl = await generateTableQRCodeDataUrl(qrToken);
+      await RestaurantTable.create({
+        organizationId: organization._id,
+        branchId: branch._id,
+        tableNumber: t.number,
+        name: t.name,
+        diningArea: t.area,
+        capacity: t.cap,
+        status: 'available',
+        qrToken,
+        qrCodeUrl,
+        isActive: true,
+      });
+    }
+
+    // 5. Initialize Chart of Accounts for ERP Accounting
+    const defaultAccounts = [
+      { code: '1010', name: 'Cash on Hand', category: 'asset' as const, balance: 10000 },
+      { code: '1020', name: 'Bank & Mobile Money (Telebirr/CBE)', category: 'asset' as const, balance: 50000 },
+      { code: '1030', name: 'Raw Material Inventory Asset', category: 'asset' as const, balance: 25000 },
+      { code: '2010', name: 'Accounts Payable (Vendors)', category: 'liability' as const, balance: 5000 },
+      { code: '4010', name: 'Food & Beverage Dine-In Revenue', category: 'revenue' as const, balance: 0 },
+      { code: '5010', name: 'Cost of Goods Sold (Ingredients)', category: 'expense' as const, balance: 0 },
+      { code: '5020', name: 'Staff Salaries & Wages', category: 'expense' as const, balance: 0 },
+    ];
+    for (const acc of defaultAccounts) {
+      await Account.create({
+        ...acc,
+        organizationId: organization._id,
+        branchId: branch._id,
+        isSystemAccount: true,
+      });
+    }
+
+    // 6. Record Audit Log
+    await AuditLog.create({
+      userId: ownerUser._id,
+      userName: ownerUser.name,
+      userRole: ownerUser.role,
+      action: 'ORGANIZATION_REGISTERED',
+      entityType: 'Organization',
+      entityId: organization._id.toString(),
+      branchId: branch._id,
+      organizationId: organization._id,
+      ipAddress: req.ip,
+      details: {
+        organizationName: organization.name,
+        slug: organization.slug,
+        primaryBranch: branch.name,
+      },
+    });
+
+    // 7. Generate Token
+    const token = generateToken({ userId: ownerUser._id.toString(), role: ownerUser.role });
+    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+
+    await StaffSession.create({
+      userId: ownerUser._id,
+      refreshToken: hashedRefresh,
+      deviceInfo: req.headers['user-agent'] || 'unknown',
+      ipAddress: req.ip || req.socket.remoteAddress,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `🎉 Welcome to FoodHub ERP! Restaurant '${organization.name}' has been created successfully.`,
+      token,
+      refreshToken: rawRefreshToken,
+      user: {
+        _id: ownerUser._id,
+        name: ownerUser.name,
+        email: ownerUser.email,
+        role: ownerUser.role,
+        organizationId: organization._id,
+        branchId: branch._id,
+        assignedBranches: [branch._id],
+        permissions: ['all'],
+        portal: '/admin',
+      },
+      organization: {
+        _id: organization._id,
+        name: organization.name,
+        slug: organization.slug,
+      },
+      branch: {
+        _id: branch._id,
+        name: branch.name,
+        code: branch.code,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get Public List of Active Organizations and Branches for Staff Registration
+ */
+export const getPublicOrganizations = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const organizations = await Organization.find({ isActive: true })
+      .select('_id name slug businessType')
+      .lean();
+
+    const orgIds = organizations.map((o) => o._id);
+    const branches = await Branch.find({ organizationId: { $in: orgIds }, isActive: true })
+      .select('_id organizationId name code diningAreas')
+      .lean();
+
+    const result = organizations.map((org) => ({
+      ...org,
+      branches: branches.filter((b) => b.organizationId.toString() === org._id.toString()),
+    }));
+
+    res.json({
+      success: true,
+      organizations: result,
     });
   } catch (error) {
     next(error);
@@ -434,4 +702,6 @@ export const getStaffMe = async (
     next(error);
   }
 };
+
+
 

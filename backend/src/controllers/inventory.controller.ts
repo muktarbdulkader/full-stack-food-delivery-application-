@@ -9,6 +9,10 @@ export const getIngredients = async (req: Request, res: Response, next: NextFunc
   try {
     const { branchId, category, lowStock, search } = req.query;
     const filter: Record<string, any> = { isActive: true };
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    }
     if (branchId) filter.branchId = branchId;
     if (category) filter.category = category;
     if (search) filter.name = { $regex: search, $options: 'i' };
@@ -39,7 +43,12 @@ export const getIngredient = async (req: Request, res: Response, next: NextFunct
 // ─── CREATE Ingredient ────────────────────────────────────────────────────────
 export const createIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const ingredient = await Ingredient.create(req.body);
+    const user = (req as any).user;
+    const data = { ...req.body };
+    if (user?.organizationId) data.organizationId = user.organizationId;
+    if (user?.branchId && !data.branchId) data.branchId = user.branchId;
+
+    const ingredient = await Ingredient.create(data);
 
     // Record opening stock movement if initial stock > 0
     if (ingredient.currentStock > 0) {
@@ -207,6 +216,10 @@ export const getStockMovements = async (req: Request, res: Response, next: NextF
   try {
     const { ingredientId, branchId, movementType, page = '1', limit = '30' } = req.query;
     const filter: Record<string, any> = {};
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    }
     if (ingredientId) filter.ingredient = ingredientId;
     if (branchId) filter.branchId = branchId;
     if (movementType) filter.movementType = movementType;
@@ -232,6 +245,10 @@ export const getInventoryStats = async (req: Request, res: Response, next: NextF
   try {
     const { branchId } = req.query;
     const filter: Record<string, any> = { isActive: true };
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    }
     if (branchId) filter.branchId = branchId;
 
     const all = await Ingredient.find(filter).lean();

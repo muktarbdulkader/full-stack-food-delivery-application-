@@ -17,6 +17,7 @@ import CashierStation from './pages/CashierStation';
 import DeliveryStation from './pages/DeliveryStation';
 import StaffLogin from './pages/staff/StaffLogin';
 import StaffRegister from './pages/staff/StaffRegister';
+import RestaurantRegister from './pages/staff/RestaurantRegister';
 import AcceptInvitation from './pages/staff/AcceptInvitation';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -38,6 +39,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isNoNavbarPage =
     location.pathname.startsWith('/admin') ||
     location.pathname === '/login' ||
+    location.pathname.startsWith('/restaurant') ||
     location.pathname.startsWith('/table/') ||
     location.pathname.startsWith('/dine/') ||
     location.pathname.startsWith('/kds') ||
@@ -106,6 +108,8 @@ function App() {
           <Route path="/hr" element={<Navigate to="/admin?tab=hr" replace />} />
 
           {/* Staff Centralized Auth & Portals */}
+          <Route path="/restaurant/register" element={<RestaurantRegister />} />
+          <Route path="/staff/register-restaurant" element={<RestaurantRegister />} />
           <Route path="/staff/login" element={<StaffLogin />} />
           <Route path="/staff/register" element={<StaffRegister />} />
           <Route path="/staff/accept-invitation" element={<AcceptInvitation />} />

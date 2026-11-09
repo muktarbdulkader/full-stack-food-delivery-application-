@@ -275,7 +275,7 @@ const WaiterStation = () => {
   const pendingBuzzers = buzzers.filter((b) => b.status === 'pending');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-8 font-sans select-none">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -1070,6 +1070,69 @@ const WaiterStation = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating Action Button on Mobile: Quick Order */}
+      <button
+        type="button"
+        onClick={() => setShowOrderModal(true)}
+        className="fixed bottom-20 right-4 sm:hidden z-40 bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black p-3.5 rounded-full shadow-2xl shadow-amber-500/40 active:scale-95 flex items-center justify-center border-2 border-amber-300"
+        title="Take New Table Order"
+      >
+        <span className="text-xl">➕</span>
+      </button>
+
+      {/* Floating Cart Indicator when items added to ticket */}
+      {orderCart.length > 0 && !showOrderModal && (
+        <div className="fixed bottom-20 left-4 right-16 sm:left-auto sm:right-6 sm:bottom-6 z-40">
+          <motion.button
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            type="button"
+            onClick={() => setShowOrderModal(true)}
+            className="w-full sm:w-auto px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black rounded-2xl shadow-2xl shadow-emerald-500/30 flex items-center justify-between gap-3 text-xs"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base">🛒</span>
+              <span>{orderCart.length} dishes in ticket</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-black text-sm">ETB {cartSubtotal.toFixed(0)}</span>
+              <span>Review &amp; Fire →</span>
+            </div>
+          </motion.button>
+        </div>
+      )}
+
+      {/* Sticky Mobile Bottom Navigation Bar */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-1.5 flex items-center justify-around shadow-2xl">
+        {[
+          { id: 'buzzers', label: 'Calls', icon: '🛎️', count: pendingBuzzers.length, color: 'text-amber-400' },
+          { id: 'readyOrders', label: 'Pickup Ready', icon: '🍽️', count: readyOrders.length, color: 'text-emerald-400' },
+          { id: 'tables', label: 'Floor Plan', icon: '🪑', count: null, color: 'text-blue-400' },
+          { id: 'orderMenu', label: 'Menu Pad', icon: '📖', count: null, color: 'text-orange-400' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl relative transition ${
+              activeTab === tab.id
+                ? 'bg-slate-800 text-amber-300 font-extrabold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span className="text-lg relative">
+              {tab.icon}
+              {tab.count !== null && tab.count > 0 && (
+                <span className="absolute -top-1 -right-2 bg-rose-500 text-white font-mono font-black text-[9px] px-1.5 rounded-full animate-pulse">
+                  {tab.count}
+                </span>
+              )}
+            </span>
+            <span className="text-[10px] mt-0.5">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 };

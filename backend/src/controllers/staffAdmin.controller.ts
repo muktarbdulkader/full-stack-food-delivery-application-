@@ -25,6 +25,11 @@ export const getStaffList = async (
       role: { $ne: 'user' }, // Only non-customer roles
     };
 
+    // Strict tenant isolation: Scope to caller's organization
+    if (req.user?.role !== 'super_admin' && req.user?.organizationId) {
+      query.organizationId = req.user.organizationId;
+    }
+
     if (role && role !== 'all') {
       query.role = role;
     }
@@ -335,6 +340,10 @@ export const getRegistrationRequests = async (
     if (status && status !== 'all') {
       filter.status = status;
     }
+    // Strict tenant isolation
+    if (req.user?.role !== 'super_admin' && req.user?.organizationId) {
+      filter.organizationId = req.user.organizationId;
+    }
 
     const requests = await StaffRegistrationRequest.find(filter)
       .populate('requestedBranchId', 'name code')
@@ -479,7 +488,12 @@ export const getInvitations = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const invitations = await StaffInvitation.find()
+    const filter: Record<string, any> = {};
+    if (req.user?.role !== 'super_admin' && req.user?.organizationId) {
+      filter.organizationId = req.user.organizationId;
+    }
+
+    const invitations = await StaffInvitation.find(filter)
       .populate('invitedBy', 'name email')
       .populate('branchId', 'name')
       .sort({ createdAt: -1 });
@@ -527,6 +541,9 @@ export const getStaffActivityLogs = async (
 
     if (userId) query.userId = userId;
     if (action) query.action = action;
+    if (req.user?.role !== 'super_admin' && req.user?.organizationId) {
+      query.organizationId = req.user.organizationId;
+    }
 
     const logs = await AuditLog.find(query)
       .sort({ createdAt: -1 })

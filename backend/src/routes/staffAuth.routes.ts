@@ -6,13 +6,17 @@ import {
   staffLogout,
   refreshAccessToken,
   getStaffMe,
+  registerRestaurantOwner,
+  getPublicOrganizations,
 } from '../controllers/staffAuth.controller';
 import { protect } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Public staff auth endpoints
+// Public staff auth & registration endpoints
 router.post('/login', staffLogin);
+router.post('/register-restaurant', registerRestaurantOwner);
+router.get('/organizations', getPublicOrganizations);
 router.post('/register-request', submitRegistrationRequest);
 router.post('/accept-invitation', acceptInvitation);
 router.post('/refresh', refreshAccessToken);

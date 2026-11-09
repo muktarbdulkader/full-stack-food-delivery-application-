@@ -74,19 +74,53 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
+        {/* Top Quick Navigation Pills */}
+        <div className="flex items-center justify-between mb-4">
+          <Link
+            to="/staff/login"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-xs text-emerald-400 hover:bg-slate-700 hover:text-emerald-300 transition shadow-sm font-medium"
+          >
+            <span className="text-sm">👥</span>
+            <span>Staff & Workstations Login</span>
+            <span>→</span>
+          </Link>
+          <Link
+            to="/restaurant/register"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-xs text-amber-400 hover:bg-slate-700 hover:text-amber-300 transition shadow-sm font-medium"
+          >
+            <span>🏢</span>
+            <span>New Restaurant</span>
+          </Link>
+        </div>
+
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-4xl">👨‍💼</span>
           </div>
           <h1 className="text-3xl font-bold text-white">Admin Portal</h1>
-          <p className="text-gray-400 mt-2">FoodHub Management System</p>
+          <p className="text-gray-400 mt-2">FoodHub ERP Restaurant Management</p>
         </div>
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
+          {/* Workstation Switcher Header Tabs */}
+          <div className="flex items-center p-1 bg-gray-100 rounded-xl mb-6">
+            <div className="flex-1 py-2 text-center text-xs font-bold text-gray-800 bg-white rounded-lg shadow-sm flex items-center justify-center gap-1.5">
+              <span>👨‍💼</span>
+              <span>Admin Master</span>
+            </div>
+            <Link
+              to="/staff/login"
+              className="flex-1 py-2 text-center text-xs font-semibold text-gray-500 hover:text-emerald-600 transition flex items-center justify-center gap-1.5"
+            >
+              <span>👥</span>
+              <span>Staff Workstations</span>
+            </Link>
+          </div>
+
           <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
             {isLogin ? 'Admin Login' : 'Admin Registration'}
           </h2>
@@ -181,6 +215,29 @@ const AdminLogin = () => {
                 {isLogin ? 'Register' : 'Login'}
               </button>
             </p>
+          </div>
+
+          {/* Staff Workstations Callout Banner with Icon */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-200/90 rounded-2xl flex items-center justify-between shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/20">
+                👥
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                  <span>Operational Staff Workstations</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-200 text-emerald-800 font-bold uppercase">Active</span>
+                </p>
+                <p className="text-[11px] text-gray-600">Cashier • Waiter • Kitchen KDS • Delivery</p>
+              </div>
+            </div>
+            <Link
+              to="/staff/login"
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1"
+            >
+              <span>Staff Login</span>
+              <span>→</span>
+            </Link>
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-200">

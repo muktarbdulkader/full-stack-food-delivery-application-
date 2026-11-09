@@ -12,7 +12,8 @@ export const getOrganizationProfile = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    let org = await Organization.findOne({ isActive: true });
+    const orgId = req.user?.organizationId;
+    let org = orgId ? await Organization.findById(orgId) : await Organization.findOne({ isActive: true });
     if (!org) {
       org = await Organization.create({
         name: 'FoodHub Ethiopia',
@@ -45,15 +46,10 @@ export const createBranch = async (
 ): Promise<void> => {
   try {
     const { name, code, phone, email, address, operatingHours, diningAreas } = req.body;
-
-    let org = await Organization.findOne({ isActive: true });
+    const orgId = req.user?.organizationId || req.body.organizationId;
+    let org = orgId ? await Organization.findById(orgId) : await Organization.findOne({ isActive: true });
     if (!org) {
-      org = await Organization.create({
-        name: 'FoodHub Ethiopia',
-        slug: 'foodhub-ethiopia',
-        contactEmail: 'admin@foodhub.et',
-        contactPhone: '+251 911 234 567',
-      });
+      throw createError('Organization not found', 404);
     }
 
     const existingBranch = await Branch.findOne({ organizationId: org._id, code });
@@ -83,12 +79,17 @@ export const createBranch = async (
 };
 
 export const getBranches = async (
-  _req: AuthRequest,
+  req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const branches = await Branch.find({ isActive: true }).sort({ isMainBranch: -1, name: 1 });
+    const orgId = req.user?.organizationId || req.query.organizationId;
+    const filter: Record<string, any> = { isActive: true };
+    if (orgId) {
+      filter.organizationId = orgId;
+    }
+    const branches = await Branch.find(filter).sort({ isMainBranch: -1, name: 1 });
     res.status(200).json({
       status: 'success',
       results: branches.length,

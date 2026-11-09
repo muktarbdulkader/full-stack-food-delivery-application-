@@ -14,12 +14,14 @@ import {
 } from '../controllers/staffAdmin.controller';
 import { protect } from '../middlewares/auth.middleware';
 import { authorizeRoles } from '../middlewares/rbac.middleware';
+import { enforceTenantIsolation } from '../middlewares/tenant.middleware';
 
 const router = Router();
 
-// Protect all admin staff management routes
+// Protect all admin staff management routes with tenant isolation
 router.use(protect);
 router.use(authorizeRoles('admin', 'super_admin', 'business_owner', 'branch_manager'));
+router.use(enforceTenantIsolation);
 
 // Staff Directory
 router.get('/', getStaffList);

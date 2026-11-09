@@ -45,6 +45,10 @@ export const getAccounts = async (req: Request, res: Response, next: NextFunctio
   try {
     const { branchId, category } = req.query;
     const filter: Record<string, any> = { isActive: true };
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    }
     if (branchId) filter.branchId = branchId;
     if (category) filter.category = category;
 
@@ -131,6 +135,10 @@ export const getJournalEntries = async (req: Request, res: Response, next: NextF
   try {
     const { branchId, page = '1', limit = '30' } = req.query;
     const filter: Record<string, any> = {};
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    }
     if (branchId) filter.branchId = branchId;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -152,6 +160,10 @@ export const getProfitAndLoss = async (req: Request, res: Response, next: NextFu
   try {
     const { branchId } = req.query;
     const filter: Record<string, any> = { isActive: true };
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    }
     if (branchId) filter.branchId = branchId;
 
     const [revenueAccounts, expenseAccounts] = await Promise.all([

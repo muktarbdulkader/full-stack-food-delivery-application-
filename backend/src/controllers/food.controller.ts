@@ -8,11 +8,19 @@ export const getAllFoods = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { category, available } = req.query;
+    const { category, available, organizationId, branchId } = req.query;
     
     const filter: Record<string, unknown> = {};
     if (category) filter.category = category;
     if (available !== undefined) filter.isAvailable = available === 'true';
+
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin' && user?.organizationId) {
+      filter.organizationId = user.organizationId;
+    } else if (organizationId) {
+      filter.organizationId = organizationId;
+    }
+    if (branchId) filter.branchId = branchId;
 
     const foods = await Food.find(filter).sort({ createdAt: -1 });
 
@@ -54,6 +62,9 @@ export const createFood = async (
 ): Promise<void> => {
   try {
     const { name, description, price, category, image, isAvailable } = req.body;
+    const user = (req as any).user;
+    const organizationId = user?.organizationId || req.body.organizationId;
+    const branchId = user?.branchId || req.body.branchId;
 
     const food = await Food.create({
       name,
@@ -62,6 +73,8 @@ export const createFood = async (
       category,
       image,
       isAvailable,
+      organizationId,
+      branchId,
     });
 
     res.status(201).json({

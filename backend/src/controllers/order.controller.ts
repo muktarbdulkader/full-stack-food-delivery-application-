@@ -109,9 +109,14 @@ export const getAllOrders = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { status } = req.query;
+    const { status, branchId } = req.query;
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
+
+    if (req.user?.role !== 'super_admin' && req.user?.organizationId) {
+      filter.organizationId = req.user.organizationId;
+    }
+    if (branchId) filter.branchId = branchId;
 
     const orders = await Order.find(filter)
       .populate('items.food', 'name price image')
