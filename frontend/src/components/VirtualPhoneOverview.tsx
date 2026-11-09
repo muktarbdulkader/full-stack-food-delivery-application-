@@ -241,12 +241,12 @@ export const VirtualPhoneOverview: React.FC = () => {
 
               {/* Action buttons */}
               <div className="mt-6 pt-5 border-t border-slate-800 flex flex-wrap items-center gap-3">
-                <a
-                  href="#menu-dishes"
+                <Link
+                  to="/menu"
                   className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-display font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition-all flex items-center gap-1.5"
                 >
-                  <span>🍽️ Browse Dishes Below</span>
-                </a>
+                  <span>🍽️ Browse Full Menu</span>
+                </Link>
                 <Link
                   to="/delivery"
                   className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors border border-slate-700"

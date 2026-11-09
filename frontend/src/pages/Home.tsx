@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { foodService } from '../services/food.service';
 import type { Food } from '../services/food.service';
 import FoodCard from '../components/FoodCard';
-import VirtualPhoneOverview from '../components/VirtualPhoneOverview';
 
 const sampleFoods: Food[] = [
   {
@@ -160,11 +159,8 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFDF9] pb-24">
-      {/* Interactive Virtual Phone Hero Overview */}
-      <VirtualPhoneOverview />
-      
       {/* Menu Header Banner */}
-      <section id="menu-dishes" className="bg-gradient-to-r from-orange-500 via-red-500 to-rose-600 text-white py-12 sm:py-16 px-4">
+      <section className="bg-gradient-to-r from-orange-500 via-red-500 to-rose-600 text-white py-12 sm:py-16 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
             <span className="px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-extrabold uppercase tracking-widest inline-block mb-3">

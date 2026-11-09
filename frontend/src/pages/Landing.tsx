@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import VirtualPhoneOverview from '../components/VirtualPhoneOverview';
 
 const Landing = () => {
   return (
@@ -59,6 +60,14 @@ const Landing = () => {
                   <span>Create Account</span>
                   <span className="text-sm">✨</span>
                 </Link>
+
+                <a
+                  href="#virtual-phone-overview"
+                  className="w-full sm:w-auto px-6 py-4 bg-orange-50/80 hover:bg-orange-100 text-orange-600 border border-orange-200/80 rounded-2xl font-bold text-base shadow-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <span>📱 Virtual Phone Tour</span>
+                  <span className="text-sm">⚡</span>
+                </a>
               </div>
 
               {/* Stat Counters */}
@@ -135,6 +144,11 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+      {/* Flagship Interactive Virtual Phone Overview Section */}
+      <div id="virtual-phone-overview">
+        <VirtualPhoneOverview />
+      </div>
 
       {/* Local Payment Badges Section */}
       <section className="py-10 bg-slate-900 text-white relative overflow-hidden">
