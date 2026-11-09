@@ -2,25 +2,61 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-type PhoneScreen = 'ar' | 'dinein' | 'tracking' | 'payment';
+export type PhoneScreen = 'ar' | 'dinein' | 'tracking' | 'chat' | 'payment';
 
-export const VirtualPhoneOverview: React.FC = () => {
-  const [activeScreen, setActiveScreen] = useState<PhoneScreen>('ar');
-  const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(true);
+interface ChatMessage {
+  id: string;
+  sender: 'driver' | 'user';
+  text: string;
+  time: string;
+}
+
+interface AddedDish {
+  name: string;
+  price: number;
+}
+
+export const VirtualPhoneOverview: React.FC<{ defaultScreen?: PhoneScreen }> = ({
+  defaultScreen = 'chat',
+}) => {
+  const [activeScreen, setActiveScreen] = useState<PhoneScreen>(defaultScreen);
+  const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
   const [cartCount, setCartCount] = useState<number>(2);
   const [waiterCalled, setWaiterCalled] = useState<boolean>(false);
   const [arRotated, setArRotated] = useState<boolean>(false);
 
-  // Auto rotate screens every 6 seconds unless user manually interacts
+  // Live Driver Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      sender: 'driver',
+      text: 'Hello! I have picked up your Sizzling Tibs from the kitchen. Heading to your address in Bole now.',
+      time: '9:38 AM',
+    },
+    {
+      id: '2',
+      sender: 'user',
+      text: "Awesome, thank you! I'm at the 2nd gate next to the bakery.",
+      time: '9:39 AM',
+    },
+  ]);
+  const [inputMsg, setInputMsg] = useState<string>('');
+  const [addedFoodList, setAddedFoodList] = useState<AddedDish[]>([
+    { name: 'Sizzling Beef Tibs', price: 350 },
+    { name: 'Fresh Injera (2 pcs)', price: 40 },
+  ]);
+  const [addFoodSuccessNotice, setAddFoodSuccessNotice] = useState<string | null>(null);
+
+  // Auto rotate screens if auto-playing
   useEffect(() => {
     if (!isAutoPlaying) return;
-    const screens: PhoneScreen[] = ['ar', 'dinein', 'tracking', 'payment'];
+    const screens: PhoneScreen[] = ['chat', 'ar', 'dinein', 'tracking', 'payment'];
     const timer = setInterval(() => {
       setActiveScreen((curr) => {
         const nextIdx = (screens.indexOf(curr) + 1) % screens.length;
         return screens[nextIdx];
       });
-    }, 6000);
+    }, 7000);
     return () => clearInterval(timer);
   }, [isAutoPlaying]);
 
@@ -29,36 +65,37 @@ export const VirtualPhoneOverview: React.FC = () => {
     {
       title: string;
       tag: string;
-      color: string;
       desc: string;
       icon: string;
     }
   > = {
+    chat: {
+      title: 'My Food & Courier Chat',
+      tag: 'Customer Live Companion',
+      desc: 'Look at your ordered dishes, chat directly with your courier in real-time, and add more food before arrival.',
+      icon: '💬',
+    },
     ar: {
       title: 'Augmented Reality 3D Food',
       tag: 'World-First Dining AR',
-      color: 'from-amber-500 to-orange-500',
-      desc: 'Point your phone at the dining table and inspect full 3D photorealistic portions before ordering.',
+      desc: 'Point your phone at your table and inspect photorealistic 3D dishes with true-to-life portion scale.',
       icon: '🥽',
     },
     dinein: {
       title: 'QR Code Table Dining & Tabs',
       tag: 'Contactless Table Service',
-      color: 'from-violet-500 to-purple-600',
       desc: 'Scan your physical table standee to browse the real-time menu, fire orders to the kitchen, and call waiters.',
       icon: '🪑',
     },
     tracking: {
       title: 'Real-Time Courier GPS Tracking',
       tag: 'Sub-30 Minute Express',
-      color: 'from-emerald-500 to-teal-600',
       desc: 'Track your dispatched courier across Addis Ababa with turn-by-turn live bike simulation and accurate ETA.',
       icon: '🛵',
     },
     payment: {
       title: 'Multi-Rail Ethiopian Payments',
       tag: 'Instant Cashless Clearing',
-      color: 'from-blue-500 to-cyan-600',
       desc: 'Seamlessly clear dining tabs and delivery orders using Telebirr, CBE Birr, M-Pesa, or POS cash registers.',
       icon: '💳',
     },
@@ -68,6 +105,49 @@ export const VirtualPhoneOverview: React.FC = () => {
     setIsAutoPlaying(false);
     setActiveScreen(screen);
   };
+
+  const handleSendChat = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputMsg.trim()) return;
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: inputMsg.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setInputMsg('');
+
+    // Simulate instant driver reply
+    setTimeout(() => {
+      const driverReplies = [
+        'Got it! Arriving at your gate in 4 minutes.',
+        'Noted! I will ring the bell as requested.',
+        'Understood! Your food is secured in the thermal insulated bag.',
+        'Almost there! See you outside in 3 minutes.',
+      ];
+      const randomReply = driverReplies[Math.floor(Math.random() * driverReplies.length)];
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          sender: 'driver',
+          text: randomReply,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    }, 1200);
+  };
+
+  const handleQuickAddFood = (dishName: string, price: number) => {
+    setAddedFoodList((prev) => [...prev, { name: dishName, price }]);
+    setAddFoodSuccessNotice(`+ Added "${dishName}" to your order! Kitchen notified.`);
+    setTimeout(() => setAddFoodSuccessNotice(null), 3500);
+  };
+
+  const totalFoodOrderAmount = addedFoodList.reduce((sum, d) => sum + d.price, 0);
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-[#FFFDF9] pt-12 pb-20 px-4 sm:px-6 lg:px-8 border-b border-orange-100/60">
@@ -87,24 +167,24 @@ export const VirtualPhoneOverview: React.FC = () => {
           >
             <span className="flex h-2 w-2 rounded-full bg-orange-400 animate-ping" />
             <span className="text-xs font-black uppercase tracking-wider text-orange-300">
-              Interactive Digital Dining Experience
+              Customer Mobile Companion
             </span>
             <span className="text-xs text-white/50">•</span>
-            <span className="text-xs font-semibold text-white/90">Smart Virtual Phone Simulator</span>
+            <span className="text-xs font-semibold text-white/90">Look Your Food &amp; Chat with Driver</span>
           </motion.div>
         </div>
 
         {/* Section Heading & Subtitle */}
-        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
           <motion.h2
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="font-display font-black text-3xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.15]"
           >
-            Restaurant Dining &amp; Delivery,{' '}
+            Look At Your Food,{' '}
             <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-rose-400 bg-clip-text text-transparent">
-              Reinvented on Your Phone
+              Talk With Your Courier
             </span>
           </motion.h2>
           <motion.p
@@ -113,13 +193,13 @@ export const VirtualPhoneOverview: React.FC = () => {
             transition={{ delay: 0.15 }}
             className="mt-4 text-slate-300 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto leading-relaxed"
           >
-            Experience Ethiopia&apos;s most advanced food ecosystem. From table QR code scanning and 3D Augmented Reality dish viewing to live courier GPS dispatch.
+            Everything you need on your phone. View live preparation stages, chat or call your assigned courier in 1-tap, add more food to your order, or preview dishes in Augmented Reality.
           </motion.p>
         </div>
 
         {/* Interactive Mode Navigation Pills */}
-        <div className="flex items-center justify-center gap-2 sm:gap-3 overflow-x-auto pb-4 mb-10 max-w-4xl mx-auto">
-          {(['ar', 'dinein', 'tracking', 'payment'] as PhoneScreen[]).map((screen) => {
+        <div className="flex items-center justify-center gap-2 sm:gap-3 overflow-x-auto pb-4 mb-10 max-w-4xl mx-auto scrollbar-none">
+          {(['chat', 'ar', 'dinein', 'tracking', 'payment'] as PhoneScreen[]).map((screen) => {
             const info = screensInfo[screen];
             const isActive = activeScreen === screen;
             return (
@@ -140,7 +220,7 @@ export const VirtualPhoneOverview: React.FC = () => {
                   />
                 )}
                 <span className="relative z-10 text-base">{info.icon}</span>
-                <span className="relative z-10">{info.title.split(' ')[0]} {info.title.split(' ')[1]}</span>
+                <span className="relative z-10">{info.title}</span>
               </button>
             );
           })}
@@ -173,6 +253,22 @@ export const VirtualPhoneOverview: React.FC = () => {
 
               {/* Dynamic Feature Checklist based on screen */}
               <div className="space-y-3 pt-4 border-t border-slate-800 text-xs sm:text-sm text-slate-300">
+                {activeScreen === 'chat' && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>Real-time two-way messaging with assigned courier</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>Direct 1-tap phone call with zero delay</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>Add extra food &amp; drinks before courier arrives</span>
+                    </div>
+                  </>
+                )}
                 {activeScreen === 'ar' && (
                   <>
                     <div className="flex items-center gap-2">
@@ -239,7 +335,7 @@ export const VirtualPhoneOverview: React.FC = () => {
                 )}
               </div>
 
-              {/* Action buttons */}
+              {/* Customer Actions */}
               <div className="mt-6 pt-5 border-t border-slate-800 flex flex-wrap items-center gap-3">
                 <Link
                   to="/menu"
@@ -248,10 +344,10 @@ export const VirtualPhoneOverview: React.FC = () => {
                   <span>🍽️ Browse Full Menu</span>
                 </Link>
                 <Link
-                  to="/delivery"
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors border border-slate-700"
+                  to="/orders"
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors border border-slate-700 flex items-center gap-1.5"
                 >
-                  Dispatch Portal ↗
+                  <span>📋 My Order History</span>
                 </Link>
               </div>
             </motion.div>
@@ -270,11 +366,11 @@ export const VirtualPhoneOverview: React.FC = () => {
               className="absolute -top-5 -right-4 sm:-right-8 bg-slate-900/90 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3 shadow-2xl z-30 hidden sm:flex items-center gap-3"
             >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xl shadow-md shadow-emerald-500/20">
-                ⚡
+                💬
               </div>
               <div className="text-left">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fast Turnaround</p>
-                <p className="text-xs font-black text-white">24 Min Express Delivery</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Driver Connected</p>
+                <p className="text-xs font-black text-white">Abebe Kebede • TVS Apache</p>
               </div>
             </motion.div>
 
@@ -285,16 +381,16 @@ export const VirtualPhoneOverview: React.FC = () => {
               className="absolute -bottom-5 -left-4 sm:-left-8 bg-slate-900/90 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3 shadow-2xl z-30 hidden sm:flex items-center gap-3"
             >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xl shadow-md shadow-amber-500/20">
-                🪑
+                🍽️
               </div>
               <div className="text-left">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Table</p>
-                <p className="text-xs font-black text-white">Table #04 • Session Live</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Meal</p>
+                <p className="text-xs font-black text-white">{addedFoodList.length} Dishes • {totalFoodOrderAmount} ETB</p>
               </div>
             </motion.div>
 
             {/* SMARTPHONE HARDWARE CHASSIS */}
-            <div className="relative w-[300px] sm:w-[330px] h-[610px] sm:h-[650px] bg-slate-950 rounded-[50px] p-3 shadow-2xl border-[4px] border-slate-700/80 ring-1 ring-white/10 select-none">
+            <div className="relative w-[310px] sm:w-[340px] h-[640px] sm:h-[680px] bg-slate-950 rounded-[50px] p-3 shadow-2xl border-[4px] border-slate-700/80 ring-1 ring-white/10 select-none">
               
               {/* Outer Metallic Bevel Details */}
               <div className="absolute top-28 -left-[7px] w-[3px] h-9 bg-slate-600 rounded-l-sm" />
@@ -306,7 +402,7 @@ export const VirtualPhoneOverview: React.FC = () => {
               <div className="w-full h-full bg-slate-950 rounded-[42px] overflow-hidden relative flex flex-col justify-between border border-slate-800 shadow-inner">
                 
                 {/* Dynamic Island & Status Bar */}
-                <div className="pt-2 px-6 pb-2 bg-slate-950 z-30 flex items-center justify-between text-white text-[11px] font-bold">
+                <div className="pt-2.5 px-6 pb-2 bg-slate-950 z-30 flex items-center justify-between text-white text-[11px] font-bold">
                   <span>9:41</span>
                   
                   {/* Dynamic Island Pill */}
@@ -329,7 +425,161 @@ export const VirtualPhoneOverview: React.FC = () => {
                 <div className="flex-1 overflow-hidden relative bg-slate-900 flex flex-col">
                   <AnimatePresence mode="wait">
                     
-                    {/* SCREEN 1: 3D AR FOOD VIEWER */}
+                    {/* SCREEN: MY FOOD & DRIVER CHAT */}
+                    {activeScreen === 'chat' && (
+                      <motion.div
+                        key="screen-chat"
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.96 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex-1 flex flex-col justify-between p-3.5 bg-slate-950 text-white overflow-hidden"
+                      >
+                        {/* Section 1: Look His Food */}
+                        <div>
+                          {/* Live Food Summary Card */}
+                          <div className="p-2.5 bg-gradient-to-r from-slate-900 to-slate-850 border border-slate-800 rounded-2xl mb-2.5 shadow-sm">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Active Food Order #8942
+                              </span>
+                              <span className="text-[10px] font-mono font-bold text-slate-300">
+                                {totalFoodOrderAmount} ETB
+                              </span>
+                            </div>
+
+                            {/* Dishes List */}
+                            <div className="space-y-1 max-h-16 overflow-y-auto pr-1 text-xs">
+                              {addedFoodList.map((dish, i) => (
+                                <div key={i} className="flex justify-between items-center text-[11px] text-slate-200">
+                                  <span>🍽️ {dish.name}</span>
+                                  <span className="text-amber-400 font-bold">{dish.price} ETB</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Add More Food Quick Bar */}
+                            <div className="mt-2 pt-1.5 border-t border-slate-800">
+                              <p className="text-[10px] text-slate-400 font-semibold mb-1">
+                                ➕ Add extra food to your meal:
+                              </p>
+                              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                                <button
+                                  onClick={() => handleQuickAddFood('Mango Smoothie', 90)}
+                                  className="px-2 py-0.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/30 rounded-lg text-[10px] font-bold whitespace-nowrap transition"
+                                >
+                                  + Smoothie (90 ETB)
+                                </button>
+                                <button
+                                  onClick={() => handleQuickAddFood('Extra Injera', 35)}
+                                  className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold whitespace-nowrap transition"
+                                >
+                                  + Injera (35 ETB)
+                                </button>
+                                <button
+                                  onClick={() => handleQuickAddFood('Chocolate Cake', 130)}
+                                  className="px-2 py-0.5 bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 border border-pink-500/30 rounded-lg text-[10px] font-bold whitespace-nowrap transition"
+                                >
+                                  + Cake (130 ETB)
+                                </button>
+                              </div>
+                              {addFoodSuccessNotice && (
+                                <p className="text-[10px] text-emerald-400 font-bold animate-pulse mt-1">
+                                  {addFoodSuccessNotice}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Section 2: Talk With Driver */}
+                          <div className="p-2 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-sm">
+                                🛵
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-bold text-xs text-white">Abebe Kebede</p>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                </div>
+                                <p className="text-[9px] text-slate-400">Your Assigned Courier • ⭐ 4.98</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => alert('Dialing courier Abebe Kebede (+251 911 234 567)...')}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold transition flex items-center gap-1 shadow-sm"
+                            >
+                              <span>📞 Call</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Chat Messages Feed */}
+                        <div className="flex-1 overflow-y-auto space-y-1.5 p-1 mb-2">
+                          {chatMessages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                            >
+                              <div
+                                className={`max-w-[85%] px-2.5 py-1.5 rounded-2xl text-[11px] leading-snug ${
+                                  msg.sender === 'user'
+                                    ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-tr-none'
+                                    : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700/60'
+                                }`}
+                              >
+                                {msg.text}
+                              </div>
+                              <span className="text-[8px] text-slate-500 mt-0.5 px-1">{msg.time}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Chat Input & Quick Presets */}
+                        <div className="pt-1.5 border-t border-slate-800">
+                          {/* Quick preset chips */}
+                          <div className="flex items-center gap-1 overflow-x-auto pb-1.5 scrollbar-none text-[9px]">
+                            <button
+                              onClick={() => setInputMsg("I'm at the gate")}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-full whitespace-nowrap transition"
+                            >
+                              "I&apos;m at the gate"
+                            </button>
+                            <button
+                              onClick={() => setInputMsg('Please call on arrival')}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-full whitespace-nowrap transition"
+                            >
+                              "Call on arrival"
+                            </button>
+                            <button
+                              onClick={() => setInputMsg('Ring the doorbell')}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-full whitespace-nowrap transition"
+                            >
+                              "Ring doorbell"
+                            </button>
+                          </div>
+
+                          <form onSubmit={handleSendChat} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={inputMsg}
+                              onChange={(e) => setInputMsg(e.target.value)}
+                              placeholder="Message courier..."
+                              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
+                            />
+                            <button
+                              type="submit"
+                              className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                            >
+                              Send
+                            </button>
+                          </form>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* SCREEN: 3D AR FOOD VIEWER */}
                     {activeScreen === 'ar' && (
                       <motion.div
                         key="screen-ar"
@@ -340,7 +590,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                         className="flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 text-white"
                       >
                         <div>
-                          {/* Mini Header */}
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
                               AR Table Camera
@@ -348,13 +597,8 @@ export const VirtualPhoneOverview: React.FC = () => {
                             <span className="text-xs text-slate-400">Addis Dining Hall</span>
                           </div>
 
-                          {/* 3D AR Stage Mockup */}
                           <div className="relative h-44 sm:h-52 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border border-slate-700/60 overflow-hidden flex flex-col items-center justify-center shadow-inner group">
-                            
-                            {/* Augmented Reality Grid Plane */}
                             <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#f97316_1px,transparent_1px)] [background-size:14px_14px]" />
-                            
-                            {/* Realistic Dish Photo with 3D float */}
                             <motion.img
                               src="https://images.unsplash.com/photo-1544025162-d76694265947?w=600"
                               alt="Sizzling Tibs AR"
@@ -370,8 +614,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                               onClick={() => setArRotated(!arRotated)}
                               title="Click to spin in 3D"
                             />
-
-                            {/* 3D Rotate Hint */}
                             <button
                               onClick={() => setArRotated(!arRotated)}
                               className="absolute bottom-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-amber-300 border border-amber-500/30 flex items-center gap-1.5 shadow-md"
@@ -392,7 +634,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* AR Bottom Action */}
                         <div className="space-y-2 pt-2 border-t border-slate-800">
                           <button
                             onClick={() => setCartCount((c) => c + 1)}
@@ -407,7 +648,7 @@ export const VirtualPhoneOverview: React.FC = () => {
                       </motion.div>
                     )}
 
-                    {/* SCREEN 2: QR TABLE DINE-IN TAB */}
+                    {/* SCREEN: QR TABLE DINE-IN TAB */}
                     {activeScreen === 'dinein' && (
                       <motion.div
                         key="screen-dinein"
@@ -418,7 +659,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                         className="flex-1 flex flex-col justify-between p-4 bg-slate-950 text-white"
                       >
                         <div>
-                          {/* Table Banner */}
                           <div className="p-3 bg-gradient-to-r from-violet-900/60 to-purple-900/40 border border-violet-500/30 rounded-2xl mb-3 flex items-center justify-between">
                             <div>
                               <p className="text-[10px] text-violet-300 font-bold uppercase">Table QR Session</p>
@@ -429,7 +669,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                             </span>
                           </div>
 
-                          {/* Running Order Tab */}
                           <div className="space-y-2 mb-3">
                             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Table Dishes</p>
                             
@@ -456,7 +695,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Waiter Buzzer Strip */}
                           <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
                             <p className="text-[10px] font-bold text-slate-400 mb-2">Digital Waiter Buzzers:</p>
                             <div className="grid grid-cols-3 gap-1.5">
@@ -487,7 +725,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Tab Subtotal & Settle */}
                         <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
                           <div>
                             <p className="text-[10px] text-slate-400">Table Tab Balance</p>
@@ -503,7 +740,7 @@ export const VirtualPhoneOverview: React.FC = () => {
                       </motion.div>
                     )}
 
-                    {/* SCREEN 3: LIVE COURIER GPS TRACKING */}
+                    {/* SCREEN: LIVE COURIER GPS TRACKING */}
                     {activeScreen === 'tracking' && (
                       <motion.div
                         key="screen-tracking"
@@ -514,7 +751,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                         className="flex-1 flex flex-col justify-between p-4 bg-slate-950 text-white"
                       >
                         <div>
-                          {/* Order Header */}
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-[10px] text-slate-400 font-mono font-bold">#ORD-8942</span>
                             <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
@@ -522,16 +758,13 @@ export const VirtualPhoneOverview: React.FC = () => {
                             </span>
                           </div>
 
-                          {/* Simulated Dark Mode Map */}
                           <div className="relative h-44 sm:h-52 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden mb-3">
-                            {/* Stylized Map Roads */}
                             <svg className="w-full h-full opacity-30" viewBox="0 0 100 100">
                               <path d="M10 20 Q 50 40 90 20" stroke="#38bdf8" strokeWidth="2" fill="none" />
                               <path d="M20 90 Q 50 50 80 80" stroke="#38bdf8" strokeWidth="2" fill="none" />
                               <path d="M50 10 L 50 90" stroke="#f97316" strokeWidth="2" strokeDasharray="3 3" fill="none" />
                             </svg>
 
-                            {/* Destination Pin (Bole Medhanialem) */}
                             <div className="absolute top-6 right-10 flex flex-col items-center">
                               <span className="text-xl">📍</span>
                               <span className="text-[9px] bg-slate-950 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300 font-bold whitespace-nowrap">
@@ -539,7 +772,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                               </span>
                             </div>
 
-                            {/* Animated Courier Bike on Map */}
                             <motion.div
                               animate={{
                                 x: [20, 80, 20],
@@ -552,7 +784,6 @@ export const VirtualPhoneOverview: React.FC = () => {
                             </motion.div>
                           </div>
 
-                          {/* Driver Info Card */}
                           <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm">
@@ -567,20 +798,24 @@ export const VirtualPhoneOverview: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Status bar */}
                         <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
-                          <span className="text-slate-400 text-[11px]">Contact Courier:</span>
+                          <button
+                            onClick={() => setActiveScreen('chat')}
+                            className="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+                          >
+                            <span>💬 Chat with Driver</span>
+                          </button>
                           <button
                             onClick={() => alert('Calling driver Abebe Kebede (+251 911 234 567)...')}
                             className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
                           >
-                            <span>📞 Call Driver</span>
+                            <span>📞 Call</span>
                           </button>
                         </div>
                       </motion.div>
                     )}
 
-                    {/* SCREEN 4: INSTANT MULTI-RAIL PAYMENT */}
+                    {/* SCREEN: INSTANT MULTI-RAIL PAYMENT */}
                     {activeScreen === 'payment' && (
                       <motion.div
                         key="screen-payment"
@@ -595,12 +830,11 @@ export const VirtualPhoneOverview: React.FC = () => {
                             <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
                               Instant Clearing
                             </span>
-                            <span className="text-xs text-slate-400">Total: 460 ETB</span>
+                            <span className="text-xs text-slate-400">Total: {totalFoodOrderAmount} ETB</span>
                           </div>
 
                           <h4 className="font-display font-black text-sm text-white mb-2">Select Payment Rail</h4>
 
-                          {/* Rails Grid */}
                           <div className="space-y-2 mb-3">
                             <div className="p-2.5 bg-slate-900 rounded-xl border-2 border-emerald-500/60 flex items-center justify-between cursor-pointer">
                               <div className="flex items-center gap-2.5">
@@ -637,13 +871,12 @@ export const VirtualPhoneOverview: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Pay Button */}
                         <div className="space-y-2 pt-2 border-t border-slate-800">
                           <button
-                            onClick={() => alert('Telebirr payment prompt simulated! Receipt verified.')}
+                            onClick={() => alert(`Telebirr payment prompt authorized for ${totalFoodOrderAmount} ETB! Receipt verified.`)}
                             className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-1.5"
                           >
-                            <span>🔒 Authorize 460 ETB Telebirr Pay</span>
+                            <span>🔒 Authorize {totalFoodOrderAmount} ETB Telebirr Pay</span>
                           </button>
                           <p className="text-[10px] text-center text-slate-500">
                             🛡️ 256-bit Encrypted Local Gateway
@@ -662,39 +895,39 @@ export const VirtualPhoneOverview: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Key Metrics & Enterprise Highlights (3 cols) */}
+          {/* Right Column: Customer Highlights (3 cols) */}
           <div className="lg:col-span-3 order-3 space-y-4">
             
-            {/* Metric 1 */}
+            {/* Highlight 1: Look at Food */}
             <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 shadow-xl">
               <span className="text-2xl p-2 bg-orange-500/10 rounded-xl border border-orange-500/20 inline-block mb-2">
-                🚀
+                🍽️
               </span>
-              <p className="text-xl font-black text-white font-display">Zero App Download</p>
+              <p className="text-xl font-black text-white font-display">Look At Your Food</p>
               <p className="text-xs text-slate-400 mt-1">
-                Works instantly inside iOS Safari &amp; Chrome. Guests scan the table QR code and start ordering with zero installation friction.
+                See each dish being prepared live by the chef with real-time cooking timers and verified ingredients.
               </p>
             </div>
 
-            {/* Metric 2 */}
+            {/* Highlight 2: Talk With Driver */}
             <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 shadow-xl">
               <span className="text-2xl p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 inline-block mb-2">
-                👨‍🍳
+                💬
               </span>
-              <p className="text-xl font-black text-white font-display">Direct KDS Sync</p>
+              <p className="text-xl font-black text-white font-display">Direct Courier Chat</p>
               <p className="text-xs text-slate-400 mt-1">
-                Orders fired from tables immediately pop onto the chef's Kitchen Display System screen with preparation timers.
+                Chat or call your assigned courier directly to share gate numbers, special directions, or check arrival.
               </p>
             </div>
 
-            {/* Metric 3 */}
+            {/* Highlight 3: Add Food On The Fly */}
             <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 shadow-xl">
               <span className="text-2xl p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 inline-block mb-2">
-                📊
+                ➕
               </span>
-              <p className="text-xl font-black text-white font-display">Live ERP Clearing</p>
+              <p className="text-xl font-black text-white font-display">Add Extra Dishes</p>
               <p className="text-xs text-slate-400 mt-1">
-                Automatic inventory depletion, recipe costing, and cash register shifts reconciled seamlessly.
+                Forgot a drink or extra injera? Easily tap to add items to your active order before your driver departs.
               </p>
             </div>
 
@@ -708,4 +941,3 @@ export const VirtualPhoneOverview: React.FC = () => {
 };
 
 export default VirtualPhoneOverview;
-

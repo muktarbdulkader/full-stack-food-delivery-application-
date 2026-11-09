@@ -56,16 +56,6 @@ const Navbar = () => {
 
             {/* Desktop User Section */}
             <div className="hidden md:flex items-center gap-3">
-              {/* Hotel / Admin Quick Link */}
-              <Link
-                to="/admin"
-                className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-amber-600 bg-amber-50 hover:bg-amber-100/80 rounded-xl transition-colors border border-amber-200/60 flex items-center gap-1.5"
-                title="Restaurant / Hotel Management System"
-              >
-                <span>🏨</span>
-                <span>Hotel Pro</span>
-              </Link>
-
               {isAuthenticated ? (
                 <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
                   <div className="flex items-center gap-2.5 bg-white px-3.5 py-1.5 rounded-2xl border border-orange-100 shadow-sm">
@@ -206,12 +196,6 @@ const Navbar = () => {
               Sign In / Register
             </MobileNavLink>
           )}
-
-          <div className="pt-3 mt-3 border-t border-slate-100">
-            <MobileNavLink to="/admin" icon="🏨" onClick={() => setIsMenuOpen(false)}>
-              Hotel Management Portal
-            </MobileNavLink>
-          </div>
         </div>
 
         {isAuthenticated && (

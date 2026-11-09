@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import VirtualPhoneOverview from '../components/VirtualPhoneOverview';
+import FloatingPhoneWidget from '../components/FloatingPhoneWidget';
 
 const Landing = () => {
   return (
@@ -410,11 +411,12 @@ const Landing = () => {
             </div>
 
             <div>
-              <h4 className="font-display font-bold text-white text-sm uppercase tracking-wider mb-4">Portals</h4>
+              <h4 className="font-display font-bold text-white text-sm uppercase tracking-wider mb-4">Experience</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/admin" className="hover:text-amber-400 transition-colors">🏨 Hotel Pro Dashboard</Link></li>
-                <li><Link to="/admin-login" className="hover:text-amber-400 transition-colors">Admin Portal Login</Link></li>
-                <li><a href="#payments" className="hover:text-orange-400 transition-colors">Merchant Integration</a></li>
+                <li><Link to="/menu" className="hover:text-orange-400 transition-colors">3D Food AR Preview</Link></li>
+                <li><a href="#virtual-phone-overview" className="hover:text-orange-400 transition-colors">📱 Virtual Phone Tour</a></li>
+                <li><a href="#payments" className="hover:text-orange-400 transition-colors">Telebirr &amp; CBE Birr</a></li>
+                <li><Link to="/orders" className="hover:text-orange-400 transition-colors">Live Delivery Tracking</Link></li>
               </ul>
             </div>
 
@@ -434,6 +436,9 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Floating Interactive Phone Launcher Icon */}
+      <FloatingPhoneWidget />
     </div>
   );
 };
